@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public record AssessmentResponse(
     UUID id,
-    String userExternalId,
+    UUID userId,
     Integer age,
     double riskScore,
     boolean predictedDcl,
@@ -18,7 +18,7 @@ public record AssessmentResponse(
   public static AssessmentResponse from(AssessmentSession session) {
     return new AssessmentResponse(
         session.getId(),
-        session.getUserExternalId(),
+        session.getUser().getId(),
         session.getAge(),
         session.getRiskScore() == null ? 0d : session.getRiskScore(),
         session.getPredictedDcl() != null && session.getPredictedDcl(),

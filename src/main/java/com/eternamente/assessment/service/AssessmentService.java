@@ -6,6 +6,8 @@ import com.eternamente.assessment.api.AssessmentResponse;
 import com.eternamente.assessment.api.CreateAssessmentRequest;
 import com.eternamente.assessment.ml.MlAnalysisService;
 import com.eternamente.assessment.ml.MlPrediction;
+import com.eternamente.user.User;
+import com.eternamente.user.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
@@ -20,25 +22,31 @@ import java.util.UUID;
 public class AssessmentService {
 
   private final AssessmentSessionRepository repository;
+  private final UserRepository userRepository;
   private final MlAnalysisService mlAnalysisService;
   private final ObjectMapper objectMapper;
 
   public AssessmentService(
       AssessmentSessionRepository repository,
+      UserRepository userRepository,
       MlAnalysisService mlAnalysisService,
       ObjectMapper objectMapper
   ) {
     this.repository = repository;
+    this.userRepository = userRepository;
     this.mlAnalysisService = mlAnalysisService;
     this.objectMapper = objectMapper;
   }
 
-  public AssessmentResponse create(CreateAssessmentRequest request) {
+  public AssessmentResponse create(CreateAssessmentRequest request, UUID userId) {
+    User user = userRepository.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
     MlPrediction prediction = mlAnalysisService.analyze(request.metrics());
     String metricsJson = toMetricsJson(request.metrics());
 
     AssessmentSession session = new AssessmentSession();
-    session.setUserExternalId(request.userExternalId());
+    session.setUser(user);
     session.setAge(request.age());
     session.setMetricsJson(metricsJson);
     session.setModelVersion(prediction.modelVersion());

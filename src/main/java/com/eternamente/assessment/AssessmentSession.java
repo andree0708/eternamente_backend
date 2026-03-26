@@ -1,8 +1,12 @@
 package com.eternamente.assessment;
 
+import com.eternamente.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -19,13 +23,13 @@ public class AssessmentSession {
   @Column(name = "id", columnDefinition = "uuid")
   private UUID id;
 
-  @Column(name = "user_external_id", nullable = false, length = 255)
-  private String userExternalId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
 
   @Column(name = "age", nullable = false)
   private Integer age;
 
-  // Guardamos la suite/juegos como JSONB para no bloquear el esquema cuando cambies features.
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "metrics", nullable = false, columnDefinition = "jsonb")
   private String metricsJson;
@@ -46,7 +50,6 @@ public class AssessmentSession {
   private Instant mlRunAt;
 
   public AssessmentSession() {
-    // Constructor requerido por JPA
   }
 
   @PrePersist
@@ -66,12 +69,12 @@ public class AssessmentSession {
     return id;
   }
 
-  public String getUserExternalId() {
-    return userExternalId;
+  public User getUser() {
+    return user;
   }
 
-  public void setUserExternalId(String userExternalId) {
-    this.userExternalId = userExternalId;
+  public void setUser(User user) {
+    this.user = user;
   }
 
   public Integer getAge() {
