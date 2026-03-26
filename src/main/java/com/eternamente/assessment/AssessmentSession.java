@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,6 +26,7 @@ public class AssessmentSession {
   private Integer age;
 
   // Guardamos la suite/juegos como JSONB para no bloquear el esquema cuando cambies features.
+  @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "metrics", nullable = false, columnDefinition = "jsonb")
   private String metricsJson;
 
