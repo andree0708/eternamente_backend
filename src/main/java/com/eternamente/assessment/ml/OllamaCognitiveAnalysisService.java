@@ -36,7 +36,7 @@ public class OllamaCognitiveAnalysisService {
   @Value("${ollama.read-timeout-ms:180000}")
   private int readTimeoutMs;
 
-  @Value("${ollama.max-tokens:220}")
+  @Value("${ollama.max-tokens:520}")
   private int maxTokens;
 
   public OllamaCognitiveAnalysisService(ObjectMapper objectMapper) {
@@ -82,6 +82,7 @@ public class OllamaCognitiveAnalysisService {
       if (analysis.isEmpty()) {
         return fallbackAnalysis(session, history, "Ollama no devolvio el campo response.");
       }
+      analysis = normalizeAnalysisText(analysis);
       log.info("Ollama analysis generated with model {}", ollamaModel);
       return analysis;
     } catch (Exception ex) {
@@ -103,11 +104,14 @@ public class OllamaCognitiveAnalysisService {
         Con base en los datos de sesiones de juego de memoria, genera un analisis breve en espanol claro.
 
         Reglas de salida:
-        1) Usa 3 secciones: "Interpretacion", "Senales relevantes", "Recomendaciones".
-        2) No des diagnostico definitivo.
-        3) Incluye recomendacion de seguimiento profesional si hay riesgo moderado/alto.
-        4) Considera tendencia entre sesiones (si mejora, empeora o se mantiene).
-        5) Maximo 220 palabras.
+        1) Responde SOLO en espanol.
+        2) Usa exactamente 3 secciones y estos titulos:
+           "Interpretacion", "Senales relevantes", "Recomendaciones".
+        3) No mezcles portugues, ingles u otro idioma.
+        4) No des diagnostico definitivo.
+        5) Incluye recomendacion de seguimiento profesional si hay riesgo moderado/alto.
+        6) Considera tendencia entre sesiones (si mejora, empeora o se mantiene).
+        7) Maximo 320 palabras.
 
         Sesion objetivo:
         - edad: %d
@@ -218,5 +222,20 @@ public class OllamaCognitiveAnalysisService {
     } catch (Exception ignored) {
       return null;
     }
+  }
+
+  private String normalizeAnalysisText(String text) {
+    if (text == null || text.isBlank()) {
+      return text;
+    }
+    String normalized = text;
+    normalized = normalized.replace("Sinais relevantes", "Senales relevantes");
+    normalized = normalized.replace("Sinais", "Senales");
+    normalized = normalized.replace("Interpretação", "Interpretacion");
+    normalized = normalized.replace("# Interpretación:", "Interpretacion:");
+    normalized = normalized.replace("# Interpretacion:", "Interpretacion:");
+    normalized = normalized.replace("# Senales relevantes:", "Senales relevantes:");
+    normalized = normalized.replace("# Recomendaciones:", "Recomendaciones:");
+    return normalized;
   }
 }

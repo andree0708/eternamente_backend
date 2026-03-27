@@ -30,6 +30,10 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
         reactionTimeMs = avgRevealMs;
       }
     }
+    double moves = readDouble(metrics, "moves", Double.NaN);
+    double mismatches = readDouble(metrics, "mismatches", Double.NaN);
+    double totalPairs = readDouble(metrics, "totalPairs", Double.NaN);
+    double durationSeconds = readDouble(metrics, "durationSeconds", Double.NaN);
 
     // Normalizamos:
     // - accuracy: si viene en 0..100 lo pasamos a 0..1.
@@ -47,10 +51,37 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
       reactionTimeRisk = clamp01((reactionTimeMs - 300d) / (2000d - 300d));
     }
 
-    double riskScore = 0.6d * accuracyRisk + 0.4d * reactionTimeRisk;
+    // errorRateRisk: mas errores por movimiento => mas riesgo
+    double errorRateRisk = 0.5d;
+    if (!Double.isNaN(moves) && moves > 0d && !Double.isNaN(mismatches) && mismatches >= 0d) {
+      errorRateRisk = clamp01(mismatches / moves);
+    }
+
+    // efficiencyRisk: movimientos por par esperado (ideal ~=1). Si sube mucho, sube riesgo.
+    double efficiencyRisk = 0.5d;
+    if (!Double.isNaN(moves) && !Double.isNaN(totalPairs) && totalPairs > 0d) {
+      double movesPerPair = moves / totalPairs;
+      efficiencyRisk = clamp01((movesPerPair - 1d) / 3d); // 1..4 -> 0..1
+    }
+
+    // paceRisk: duracion total por par (segundos) para capturar lentitud sostenida
+    double paceRisk = 0.5d;
+    if (!Double.isNaN(durationSeconds) && !Double.isNaN(totalPairs) && totalPairs > 0d) {
+      double secPerPair = durationSeconds / totalPairs;
+      paceRisk = clamp01((secPerPair - 4d) / 20d); // 4..24 seg/par -> 0..1
+    }
+
+    // Mezcla final mas sensible a variaciones del juego
+    double riskScore =
+        0.35d * accuracyRisk +
+        0.20d * reactionTimeRisk +
+        0.20d * errorRateRisk +
+        0.15d * efficiencyRisk +
+        0.10d * paceRisk;
+    riskScore = clamp01(riskScore);
     boolean predictedDcl = riskScore >= 0.6d;
 
-    return new MlPrediction("rule-v1-memory", riskScore, predictedDcl);
+    return new MlPrediction("rule-v2-memory", riskScore, predictedDcl);
   }
 
   private static double readDouble(Map<String, Object> metrics, String key, double defaultValue) {
