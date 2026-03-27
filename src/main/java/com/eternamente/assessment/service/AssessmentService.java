@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -62,6 +63,12 @@ public class AssessmentService {
     return repository.findById(id)
         .map(AssessmentResponse::from)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assessment no encontrada"));
+  }
+
+  public List<AssessmentResponse> getByUser(UUID userId) {
+    return repository.findByUserId(userId).stream()
+        .map(AssessmentResponse::from)
+        .toList();
   }
 
   private String toMetricsJson(Map<String, Object> metrics) {
