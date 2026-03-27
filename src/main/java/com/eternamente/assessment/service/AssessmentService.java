@@ -7,7 +7,7 @@ import com.eternamente.assessment.api.AssessmentResponse;
 import com.eternamente.assessment.api.CreateAssessmentRequest;
 import com.eternamente.assessment.ml.MlAnalysisService;
 import com.eternamente.assessment.ml.MlPrediction;
-import com.eternamente.assessment.ml.OllamaCognitiveAnalysisService;
+import com.eternamente.assessment.ml.GroqCognitiveAnalysisService;
 import com.eternamente.user.User;
 import com.eternamente.user.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -27,20 +27,20 @@ public class AssessmentService {
   private final AssessmentSessionRepository repository;
   private final UserRepository userRepository;
   private final MlAnalysisService mlAnalysisService;
-  private final OllamaCognitiveAnalysisService ollamaCognitiveAnalysisService;
+  private final GroqCognitiveAnalysisService groqCognitiveAnalysisService;
   private final ObjectMapper objectMapper;
 
   public AssessmentService(
       AssessmentSessionRepository repository,
       UserRepository userRepository,
       MlAnalysisService mlAnalysisService,
-      OllamaCognitiveAnalysisService ollamaCognitiveAnalysisService,
+      GroqCognitiveAnalysisService groqCognitiveAnalysisService,
       ObjectMapper objectMapper
   ) {
     this.repository = repository;
     this.userRepository = userRepository;
     this.mlAnalysisService = mlAnalysisService;
-    this.ollamaCognitiveAnalysisService = ollamaCognitiveAnalysisService;
+    this.groqCognitiveAnalysisService = groqCognitiveAnalysisService;
     this.objectMapper = objectMapper;
   }
 
@@ -80,8 +80,8 @@ public class AssessmentService {
     AssessmentSession session = repository.findByIdAndUserId(id, userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assessment no encontrada"));
     List<AssessmentSession> recentSessions = repository.findTop10ByUserIdOrderByCreatedAtDesc(userId);
-    String analysis = ollamaCognitiveAnalysisService.analyze(session, recentSessions);
-    return new AssessmentAnalysisResponse(session.getId(), ollamaCognitiveAnalysisService.modelName(), analysis);
+    String analysis = groqCognitiveAnalysisService.analyze(session, recentSessions);
+    return new AssessmentAnalysisResponse(session.getId(), groqCognitiveAnalysisService.modelName(), analysis);
   }
 
   private String toMetricsJson(Map<String, Object> metrics) {
