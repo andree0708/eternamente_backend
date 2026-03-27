@@ -25,31 +25,34 @@ public class GroqCognitiveAnalysisService {
   private static final Logger log = LoggerFactory.getLogger(GroqCognitiveAnalysisService.class);
   private final ObjectMapper objectMapper;
 
-  @Value("${groq.api.key:}")
+  @Value("${GROQ_API_KEY:}")
   private String groqApiKey;
 
-  @Value("${groq.url:https://api.groq.com/openai/v1/chat/completions}")
+  @Value("${GROQ_URL:https://api.groq.com/openai/v1/chat/completions}")
   private String groqUrl;
 
-  @Value("${groq.model:llama-3.1-70b-versatile}")
+  @Value("${GROQ_MODEL:llama-3.1-70b-versatile}")
   private String groqModel;
 
-  @Value("${groq.connect-timeout-ms:10000}")
+  @Value("${GROQ_CONNECT_TIMEOUT_MS:10000}")
   private int connectTimeoutMs;
 
-  @Value("${groq.read-timeout-ms:60000}")
+  @Value("${GROQ_READ_TIMEOUT_MS:60000}")
   private int readTimeoutMs;
 
-  @Value("${groq.max-tokens:520}")
+  @Value("${GROQ_MAX_TOKENS:520}")
   private int maxTokens;
 
   public GroqCognitiveAnalysisService(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
+    log.info("GroqCognitiveAnalysisService inicializado - Groq URL: {}, Model: {}", groqUrl, groqModel);
   }
 
   public String analyze(AssessmentSession session, List<AssessmentSession> history) {
+    log.info("Groq API Key configurada: {}", groqApiKey != null && !groqApiKey.isBlank() ? "SI" : "NO");
+    
     if (groqApiKey == null || groqApiKey.isBlank()) {
-      log.warn("Groq API key no configurada. Usando fallback.");
+      log.warn("Groq API key no configurada o vacia. Usando fallback.");
       return fallbackAnalysis(session, history, "Groq API key no configurada.");
     }
 
@@ -73,7 +76,10 @@ public class GroqCognitiveAnalysisService {
     body.put("temperature", 0.7);
 
     try {
+      log.info("Enviando peticion a Groq - URL: {}, Model: {}", groqUrl, groqModel);
       String requestJson = objectMapper.writeValueAsString(body);
+      log.debug("Request JSON: {}", requestJson);
+      
       HttpRequest request = HttpRequest.newBuilder()
           .uri(URI.create(groqUrl))
           .header("Content-Type", "application/json")
@@ -85,8 +91,10 @@ public class GroqCognitiveAnalysisService {
       HttpClient client = HttpClient.newBuilder()
           .connectTimeout(Duration.ofMillis(connectTimeoutMs))
           .build();
+      log.info("Esperando respuesta de Groq...");
       HttpResponse<String> httpResponse = client.send(request, HttpResponse.BodyHandlers.ofString());
       String response = httpResponse.body();
+      log.info("Groq response status: {}, body: {}", httpResponse.statusCode(), response);
 
       if (httpResponse.statusCode() >= 400) {
         String groqError = extractGroqError(response);
@@ -98,18 +106,20 @@ public class GroqCognitiveAnalysisService {
       JsonNode node = objectMapper.readTree(response);
       JsonNode choices = node.path("choices");
       if (choices.isEmpty() || !choices.has(0)) {
+        log.error("Groq response sin choices: {}", response);
         return fallbackAnalysis(session, history, "Groq no devolvio respuesta.");
       }
       String analysis = choices.get(0).path("message").path("content").asText("").trim();
       if (analysis.isEmpty()) {
+        log.error("Groq response con contenido vacio: {}", response);
         return fallbackAnalysis(session, history, "Groq no devolvio contenido.");
       }
       analysis = normalizeAnalysisText(analysis);
-      log.info("Groq analysis generated with model {}", groqModel);
+      log.info("Groq analysis generated successfully with model {}", groqModel);
       return analysis;
     } catch (Exception ex) {
       String reason = humanizeGroqError(ex.getMessage());
-      log.error("Groq connection/processing error. url={}, model={}, message={}", groqUrl, groqModel, ex.getMessage());
+      log.error("Groq connection/processing error. url={}, model={}, message={}, stack={}", groqUrl, groqModel, ex.getMessage(), ex.getStackTrace());
       return fallbackAnalysis(session, history, reason);
     }
   }
