@@ -9,5 +9,7 @@ import java.util.UUID;
 @Repository
 public interface AssessmentSessionRepository extends JpaRepository<AssessmentSession, UUID> {
     List<AssessmentSession> findByUserId(UUID userId);
+    java.util.Optional<AssessmentSession> findByIdAndUserId(UUID id, UUID userId);
+    List<AssessmentSession> findTop10ByUserIdOrderByCreatedAtDesc(UUID userId);
 }
 

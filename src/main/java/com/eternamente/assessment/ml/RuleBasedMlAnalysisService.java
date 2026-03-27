@@ -9,8 +9,27 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
 
   @Override
   public MlPrediction analyze(Map<String, Object> metrics) {
+    // Preferimos las claves que ya maneja el "rule-based model".
+    // Si el frontend manda otras (como en tu juego), hacemos fallback con métricas equivalentes.
     double accuracy = readDouble(metrics, "accuracy", readDouble(metrics, "accuracyMean", Double.NaN));
     double reactionTimeMs = readDouble(metrics, "reactionTimeMs", readDouble(metrics, "reactionTimeMeanMs", Double.NaN));
+
+    // Fallback desde métricas del juego:
+    // - accuracy: estimacion basada en matchedPairs/totalPairs
+    // - reactionTimeMs: usamos averageRevealMs como "tiempo de reaccion"
+    if (Double.isNaN(accuracy)) {
+      double matchedPairs = readDouble(metrics, "matchedPairs", Double.NaN);
+      double totalPairs = readDouble(metrics, "totalPairs", Double.NaN);
+      if (!Double.isNaN(matchedPairs) && !Double.isNaN(totalPairs) && totalPairs > 0d) {
+        accuracy = matchedPairs / totalPairs; // 0..1
+      }
+    }
+    if (Double.isNaN(reactionTimeMs)) {
+      double avgRevealMs = readDouble(metrics, "averageRevealMs", Double.NaN);
+      if (!Double.isNaN(avgRevealMs)) {
+        reactionTimeMs = avgRevealMs;
+      }
+    }
 
     // Normalizamos:
     // - accuracy: si viene en 0..100 lo pasamos a 0..1.
@@ -31,7 +50,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     double riskScore = 0.6d * accuracyRisk + 0.4d * reactionTimeRisk;
     boolean predictedDcl = riskScore >= 0.6d;
 
-    return new MlPrediction("rule-v0", riskScore, predictedDcl);
+    return new MlPrediction("rule-v1-memory", riskScore, predictedDcl);
   }
 
   private static double readDouble(Map<String, Object> metrics, String key, double defaultValue) {

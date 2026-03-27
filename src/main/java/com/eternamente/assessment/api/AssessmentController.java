@@ -43,5 +43,13 @@ public class AssessmentController {
   public List<AssessmentResponse> getMyAssessments(@AuthenticationPrincipal UUID userId) {
     return assessmentService.getByUser(userId);
   }
+
+  @GetMapping("/{id}/analysis")
+  public AssessmentAnalysisResponse getDetailedAnalysis(
+      @PathVariable UUID id,
+      @AuthenticationPrincipal UUID userId
+  ) {
+    return assessmentService.getDetailedAnalysis(id, userId);
+  }
 }
 
