@@ -3,6 +3,7 @@ package com.eternamente.user.config;
 import com.eternamente.user.service.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -28,6 +29,9 @@ public class SecurityConfig {
 
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
   private final JwtAuthFilter jwtAuthFilter;
+
+  @Value("${cors.origins:}")
+  private String corsOrigins;
 
   public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
     this.jwtAuthFilter = jwtAuthFilter;
@@ -65,15 +69,19 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    String corsOrigins = System.getenv("CORS_ORIGINS");
+    log.info("CORS_ORIGINS configurado: '{}'", corsOrigins);
+    
     if (corsOrigins != null && !corsOrigins.isBlank()) {
       List<String> origins = Arrays.stream(corsOrigins.split(","))
           .map(String::trim)
+          .map(s -> s.replaceAll("/$", ""))
           .filter(s -> !s.isEmpty())
           .toList();
       configuration.setAllowedOrigins(origins);
+      log.info("Origenes CORS permitidos: {}", origins);
     } else {
       configuration.setAllowedOrigins(List.of("http://localhost:4321", "http://localhost:3000", "http://127.0.0.1:4321", "http://127.0.0.1:3000"));
+      log.warn("No se configuró CORS_ORIGINS, usando origenes locales por defecto");
     }
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
