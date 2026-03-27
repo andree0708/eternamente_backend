@@ -31,7 +31,7 @@ public class GroqCognitiveAnalysisService {
   @Value("${GROQ_URL:https://api.groq.com/openai/v1/chat/completions}")
   private String groqUrl;
 
-  @Value("${GROQ_MODEL:llama-3.1-70b-versatile}")
+  @Value("${GROQ_MODEL:llama-3.1-8b-instant}")
   private String groqModel;
 
   @Value("${GROQ_CONNECT_TIMEOUT_MS:10000}")
