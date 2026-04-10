@@ -9,19 +9,92 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
 
   @Override
   public MlPrediction analyze(Map<String, Object> metrics) {
-    // Preferimos las claves que ya maneja el "rule-based model".
-    // Si el frontend manda otras (como en tu juego), hacemos fallback con métricas equivalentes.
+    String gameType = (String) metrics.getOrDefault("gameType", "memory");
+    
+    return switch (gameType) {
+      case "stroop" -> analyzeStroop(metrics);
+      case "whackamole" -> analyzeWhackamole(metrics);
+      case "navigation" -> analyzeNavigation(metrics);
+      default -> analyzeMemory(metrics);
+    };
+  }
+
+  private MlPrediction analyzeStroop(Map<String, Object> metrics) {
+    double accuracy = readDouble(metrics, "accuracy", 0.0);
+    double avgReactionTime = readDouble(metrics, "averageReactionTimeMs", Double.NaN);
+    int correct = (int) readDouble(metrics, "correct", 0);
+    int errors = (int) readDouble(metrics, "errors", 0);
+    int totalRounds = (int) readDouble(metrics, "totalRounds", 20);
+    
+    double accuracyRisk = clamp01(1.0 - accuracy);
+    
+    double reactionTimeRisk;
+    if (Double.isNaN(avgReactionTime)) {
+      reactionTimeRisk = 0.5;
+    } else {
+      reactionTimeRisk = clamp01((avgReactionTime - 500) / 2000);
+    }
+    
+    double errorRate = totalRounds > 0 ? (double) errors / totalRounds : 0;
+    double errorRisk = clamp01(errorRate * 2);
+    
+    double riskScore = 0.40 * accuracyRisk + 0.35 * reactionTimeRisk + 0.25 * errorRisk;
+    riskScore = clamp01(riskScore);
+    boolean predictedDcl = riskScore >= 0.6;
+    
+    return new MlPrediction("rule-v1-stroop", riskScore, predictedDcl);
+  }
+
+  private MlPrediction analyzeWhackamole(Map<String, Object> metrics) {
+    double accuracy = readDouble(metrics, "accuracy", 0.0);
+    double avgReactionTime = readDouble(metrics, "averageReactionTimeMs", Double.NaN);
+    int correct = (int) readDouble(metrics, "correct", 0);
+    int errors = (int) readDouble(metrics, "errors", 0);
+    
+    double accuracyRisk = clamp01(1.0 - accuracy);
+    
+    double reactionTimeRisk;
+    if (Double.isNaN(avgReactionTime)) {
+      reactionTimeRisk = 0.5;
+    } else {
+      reactionTimeRisk = clamp01((avgReactionTime - 200) / 800);
+    }
+    
+    double riskScore = 0.50 * accuracyRisk + 0.50 * reactionTimeRisk;
+    riskScore = clamp01(riskScore);
+    boolean predictedDcl = riskScore >= 0.6;
+    
+    return new MlPrediction("rule-v1-whackamole", riskScore, predictedDcl);
+  }
+
+  private MlPrediction analyzeNavigation(Map<String, Object> metrics) {
+    int achievedLevel = (int) readDouble(metrics, "achievedLevel", 0);
+    int maxLevel = (int) readDouble(metrics, "maxLevel", 5);
+    int totalMoves = (int) readDouble(metrics, "totalMoves", 0);
+    int errors = (int) readDouble(metrics, "errors", 0);
+    
+    double levelProgress = maxLevel > 0 ? (double) achievedLevel / maxLevel : 0;
+    double levelRisk = clamp01(1.0 - levelProgress);
+    
+    double errorRate = totalMoves > 0 ? (double) errors / totalMoves : 0;
+    double errorRisk = clamp01(errorRate * 2);
+    
+    double riskScore = 0.60 * levelRisk + 0.40 * errorRisk;
+    riskScore = clamp01(riskScore);
+    boolean predictedDcl = riskScore >= 0.6;
+    
+    return new MlPrediction("rule-v1-navigation", riskScore, predictedDcl);
+  }
+
+  private MlPrediction analyzeMemory(Map<String, Object> metrics) {
     double accuracy = readDouble(metrics, "accuracy", readDouble(metrics, "accuracyMean", Double.NaN));
     double reactionTimeMs = readDouble(metrics, "reactionTimeMs", readDouble(metrics, "reactionTimeMeanMs", Double.NaN));
 
-    // Fallback desde métricas del juego:
-    // - accuracy: estimacion basada en matchedPairs/totalPairs
-    // - reactionTimeMs: usamos averageRevealMs como "tiempo de reaccion"
     if (Double.isNaN(accuracy)) {
       double matchedPairs = readDouble(metrics, "matchedPairs", Double.NaN);
       double totalPairs = readDouble(metrics, "totalPairs", Double.NaN);
       if (!Double.isNaN(matchedPairs) && !Double.isNaN(totalPairs) && totalPairs > 0d) {
-        accuracy = matchedPairs / totalPairs; // 0..1
+        accuracy = matchedPairs / totalPairs;
       }
     }
     if (Double.isNaN(reactionTimeMs)) {
@@ -35,15 +108,11 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     double totalPairs = readDouble(metrics, "totalPairs", Double.NaN);
     double durationSeconds = readDouble(metrics, "durationSeconds", Double.NaN);
 
-    // Normalizamos:
-    // - accuracy: si viene en 0..100 lo pasamos a 0..1.
     if (!Double.isNaN(accuracy) && accuracy > 1d) {
       accuracy = accuracy / 100d;
     }
-    // accuracyRisk: entre 0..1 (1 significa mayor riesgo)
     double accuracyRisk = Double.isNaN(accuracy) ? 0.5d : clamp01(1d - accuracy);
 
-    // reactionTimeRisk: más tiempo => más riesgo (con rango aproximado 300..2000 ms)
     double reactionTimeRisk;
     if (Double.isNaN(reactionTimeMs)) {
       reactionTimeRisk = 0.5d;
@@ -51,27 +120,23 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
       reactionTimeRisk = clamp01((reactionTimeMs - 300d) / (2000d - 300d));
     }
 
-    // errorRateRisk: mas errores por movimiento => mas riesgo
     double errorRateRisk = 0.5d;
     if (!Double.isNaN(moves) && moves > 0d && !Double.isNaN(mismatches) && mismatches >= 0d) {
       errorRateRisk = clamp01(mismatches / moves);
     }
 
-    // efficiencyRisk: movimientos por par esperado (ideal ~=1). Si sube mucho, sube riesgo.
     double efficiencyRisk = 0.5d;
     if (!Double.isNaN(moves) && !Double.isNaN(totalPairs) && totalPairs > 0d) {
       double movesPerPair = moves / totalPairs;
-      efficiencyRisk = clamp01((movesPerPair - 1d) / 3d); // 1..4 -> 0..1
+      efficiencyRisk = clamp01((movesPerPair - 1d) / 3d);
     }
 
-    // paceRisk: duracion total por par (segundos) para capturar lentitud sostenida
     double paceRisk = 0.5d;
     if (!Double.isNaN(durationSeconds) && !Double.isNaN(totalPairs) && totalPairs > 0d) {
       double secPerPair = durationSeconds / totalPairs;
-      paceRisk = clamp01((secPerPair - 4d) / 20d); // 4..24 seg/par -> 0..1
+      paceRisk = clamp01((secPerPair - 4d) / 20d);
     }
 
-    // Mezcla final mas sensible a variaciones del juego
     double riskScore =
         0.35d * accuracyRisk +
         0.20d * reactionTimeRisk +
