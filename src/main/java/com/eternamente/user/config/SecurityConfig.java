@@ -20,6 +20,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -72,24 +73,29 @@ public class SecurityConfig {
     CorsConfiguration configuration = new CorsConfiguration();
     log.info("CORS_ORIGINS configurado: '{}'", corsOrigins);
     
+    List<String> allOrigins = new ArrayList<>();
+    
     if (corsOrigins != null && !corsOrigins.isBlank()) {
-      List<String> origins = Arrays.stream(corsOrigins.split(","))
+      List<String> configuredOrigins = Arrays.stream(corsOrigins.split(","))
           .map(String::trim)
           .map(s -> s.replaceAll("/$", ""))
           .filter(s -> !s.isEmpty())
           .toList();
-      configuration.setAllowedOrigins(origins);
-      log.info("Origenes CORS permitidos: {}", origins);
-    } else {
-      configuration.setAllowedOrigins(List.of(
-        "http://localhost:4321", 
-        "http://localhost:3000", 
-        "http://127.0.0.1:4321", 
-        "http://127.0.0.1:3000",
-        "https://eterna-mente-4brwsb4mp-andree0708s-projects.vercel.app"
-      ));
-      log.warn("No se configuró CORS_ORIGINS, usando origenes locales por defecto");
+      allOrigins.addAll(configuredOrigins);
+      log.info("Origenes CORS configurados: {}", configuredOrigins);
     }
+    
+    allOrigins.addAll(List.of(
+      "http://localhost:4321", 
+      "http://localhost:3000", 
+      "http://127.0.0.1:4321", 
+      "http://127.0.0.1:3000",
+      "https://eterna-mente-4brwsb4mp-andree0708s-projects.vercel.app"
+    ));
+    
+    configuration.setAllowedOrigins(allOrigins.stream().distinct().toList());
+    log.info("Todos los origenes CORS permitidos: {}", allOrigins);
+    
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
     configuration.setExposedHeaders(List.of("Authorization"));
