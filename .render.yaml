@@ -1,0 +1,5 @@
+build:
+  dockerfilePath: ./Dockerfile
+  command: ./gradlew build -x test
+  env:
+    - SPRING_PROFILES_ACTIVE=prod
