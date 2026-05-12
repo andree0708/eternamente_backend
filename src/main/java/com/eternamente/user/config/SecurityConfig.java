@@ -94,7 +94,7 @@ public class SecurityConfig {
       "https://eterna-mente-gl1jo2k89-andree0708s-projects.vercel.app"
     ));
     
-    configuration.setAllowedOrigins(allOrigins.stream().distinct().toList());
+    configuration.setAllowedOrigins(List.of("*"));
     log.info("Todos los origenes CORS permitidos: {}", allOrigins);
     
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
