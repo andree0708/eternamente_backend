@@ -90,7 +90,8 @@ public class SecurityConfig {
       "http://localhost:3000", 
       "http://127.0.0.1:4321", 
       "http://127.0.0.1:3000",
-      "https://eterna-mente-4brwsb4mp-andree0708s-projects.vercel.app"
+      "https://eterna-mente-4brwsb4mp-andree0708s-projects.vercel.app",
+      "https://eterna-mente-gl1jo2k89-andree0708s-projects.vercel.app"
     ));
     
     configuration.setAllowedOrigins(allOrigins.stream().distinct().toList());
