@@ -20,7 +20,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -29,6 +28,13 @@ import java.util.List;
 public class SecurityConfig {
 
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+  private static final List<String> DEFAULT_DEV_ORIGINS = List.of(
+      "http://localhost:4321",
+      "http://localhost:3000",
+      "http://127.0.0.1:4321",
+      "http://127.0.0.1:3000"
+  );
+
   private final JwtAuthFilter jwtAuthFilter;
 
   @Value("${cors.origins:}")
@@ -71,40 +77,33 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    log.info("CORS_ORIGINS configurado: '{}'", corsOrigins);
-    
-    List<String> allOrigins = new ArrayList<>();
-    
-    if (corsOrigins != null && !corsOrigins.isBlank()) {
-      List<String> configuredOrigins = Arrays.stream(corsOrigins.split(","))
-          .map(String::trim)
-          .map(s -> s.replaceAll("/$", ""))
-          .filter(s -> !s.isEmpty())
-          .toList();
-      allOrigins.addAll(configuredOrigins);
-      log.info("Origenes CORS configurados: {}", configuredOrigins);
-    }
-    
-    allOrigins.addAll(List.of(
-      "http://localhost:4321", 
-      "http://localhost:3000", 
-      "http://127.0.0.1:4321", 
-      "http://127.0.0.1:3000",
-      "https://eterna-mente-4brwsb4mp-andree0708s-projects.vercel.app",
-      "https://eterna-mente-gl1jo2k89-andree0708s-projects.vercel.app"
-    ));
-    
-    configuration.setAllowedOriginPatterns(List.of("*"));
-    log.info("Todos los origenes CORS permitidos: {}", allOrigins);
-    
+    List<String> allowedOrigins = resolveCorsOrigins();
+    log.info("Orígenes CORS permitidos: {}", allowedOrigins);
+
+    configuration.setAllowedOrigins(allowedOrigins);
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
     configuration.setExposedHeaders(List.of("Authorization"));
     configuration.setAllowCredentials(true);
     configuration.setMaxAge(3600L);
+
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
+  }
+
+  private List<String> resolveCorsOrigins() {
+    if (corsOrigins != null && !corsOrigins.isBlank()) {
+      List<String> configured = Arrays.stream(corsOrigins.split(","))
+          .map(String::trim)
+          .map(s -> s.replaceAll("/$", ""))
+          .filter(s -> !s.isEmpty())
+          .toList();
+      if (!configured.isEmpty()) {
+        return configured;
+      }
+    }
+    return DEFAULT_DEV_ORIGINS;
   }
 
   @Bean

@@ -25,23 +25,31 @@ public class GroqCognitiveAnalysisService {
   private static final Logger log = LoggerFactory.getLogger(GroqCognitiveAnalysisService.class);
   private final ObjectMapper objectMapper;
 
+  @Value("${groq.api.key:}")
   private String groqApiKey;
+
+  @Value("${groq.url}")
   private String groqUrl;
+
+  @Value("${groq.model}")
   private String groqModel;
+
+  @Value("${groq.connect-timeout-ms:10000}")
   private int connectTimeoutMs;
+
+  @Value("${groq.read-timeout-ms:60000}")
   private int readTimeoutMs;
+
+  @Value("${groq.max-tokens:520}")
   private int maxTokens;
 
   public GroqCognitiveAnalysisService(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
-    this.groqApiKey = System.getenv("GROQ_API_KEY");
-    this.groqUrl = System.getenv().getOrDefault("GROQ_URL", "https://api.groq.com/openai/v1/chat/completions");
-    this.groqModel = System.getenv().getOrDefault("GROQ_MODEL", "llama-3.1-8b-instant");
-    this.connectTimeoutMs = Integer.parseInt(System.getenv().getOrDefault("GROQ_CONNECT_TIMEOUT_MS", "10000"));
-    this.readTimeoutMs = Integer.parseInt(System.getenv().getOrDefault("GROQ_READ_TIMEOUT_MS", "60000"));
-    this.maxTokens = Integer.parseInt(System.getenv().getOrDefault("GROQ_MAX_TOKENS", "520"));
-    
-    log.info("GroqCognitiveAnalysisService inicializado - Groq URL: {}, Model: {}", groqUrl, groqModel);
+  }
+
+  @jakarta.annotation.PostConstruct
+  void logConfig() {
+    log.info("GroqCognitiveAnalysisService - URL: {}, Model: {}", groqUrl, groqModel);
   }
 
   public String analyze(AssessmentSession session, List<AssessmentSession> history) {
