@@ -9,7 +9,10 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
 
   @Override
   public MlPrediction analyze(Map<String, Object> metrics) {
-    String gameType = (String) metrics.getOrDefault("gameType", "memory");
+    Object rawType = metrics.get("gameType");
+    String gameType = rawType != null && !String.valueOf(rawType).isBlank()
+        ? String.valueOf(rawType)
+        : "memory";
     
     return switch (gameType) {
       case "stroop" -> analyzeStroop(metrics);

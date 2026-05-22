@@ -17,6 +17,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -50,6 +51,7 @@ public class AssessmentService {
     this.objectMapper = objectMapper;
   }
 
+  @Transactional
   public AssessmentResponse create(CreateAssessmentRequest request, UUID userId) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
@@ -70,21 +72,24 @@ public class AssessmentService {
 
     AssessmentSession saved = repository.save(session);
     updateCognitiveSummary(user, gameType, prediction.riskScore(), request.metrics());
-    return AssessmentResponse.from(saved, objectMapper);
+    return AssessmentResponse.from(saved, userId, objectMapper);
   }
 
+  @Transactional(readOnly = true)
   public AssessmentResponse get(UUID id, UUID userId) {
     return repository.findByIdAndUserId(id, userId)
-        .map(s -> AssessmentResponse.from(s, objectMapper))
+        .map(s -> AssessmentResponse.from(s, userId, objectMapper))
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assessment no encontrada"));
   }
 
+  @Transactional(readOnly = true)
   public List<AssessmentResponse> getByUser(UUID userId) {
     return repository.findByUserId(userId).stream()
-        .map(s -> AssessmentResponse.from(s, objectMapper))
+        .map(s -> AssessmentResponse.from(s, userId, objectMapper))
         .toList();
   }
 
+  @Transactional(readOnly = true)
   public CognitiveSummaryResponse getSummary(UUID userId) {
     return summaryRepository.findById(userId)
         .map(CognitiveSummaryResponse::from)
@@ -93,6 +98,7 @@ public class AssessmentService {
         ));
   }
 
+  @Transactional(readOnly = true)
   public AssessmentAnalysisResponse getDetailedAnalysis(UUID id, UUID userId) {
     AssessmentSession session = repository.findByIdAndUserId(id, userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assessment no encontrada"));

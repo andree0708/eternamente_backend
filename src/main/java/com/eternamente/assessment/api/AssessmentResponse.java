@@ -21,7 +21,11 @@ public record AssessmentResponse(
     Instant createdAt,
     Instant mlRunAt
 ) {
-  public static AssessmentResponse from(AssessmentSession session, ObjectMapper objectMapper) {
+  public static AssessmentResponse from(
+      AssessmentSession session,
+      UUID userId,
+      ObjectMapper objectMapper
+  ) {
     Map<String, Object> metrics = parseMetrics(session.getMetricsJson(), objectMapper);
     String gameType = session.getGameType();
     if (gameType == null || gameType.isBlank()) {
@@ -30,7 +34,7 @@ public record AssessmentResponse(
     }
     return new AssessmentResponse(
         session.getId(),
-        session.getUser().getId(),
+        userId,
         session.getAge(),
         session.getRiskScore() == null ? 0d : session.getRiskScore(),
         session.getPredictedDcl() != null && session.getPredictedDcl(),
