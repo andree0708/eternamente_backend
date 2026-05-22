@@ -34,6 +34,9 @@ public class AssessmentSession {
   @Column(name = "metrics", nullable = false, columnDefinition = "jsonb")
   private String metricsJson;
 
+  @Column(name = "game_type", length = 32)
+  private String gameType;
+
   @Column(name = "model_version", nullable = false, length = 64)
   private String modelVersion;
 
@@ -91,6 +94,14 @@ public class AssessmentSession {
 
   public void setMetricsJson(String metricsJson) {
     this.metricsJson = metricsJson;
+  }
+
+  public String getGameType() {
+    return gameType;
+  }
+
+  public void setGameType(String gameType) {
+    this.gameType = gameType;
   }
 
   public String getModelVersion() {
