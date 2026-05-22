@@ -55,10 +55,11 @@ public class SecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-            .requestMatchers("/api/auth/login").permitAll()
+            .requestMatchers("/", "/health", "/actuator/health", "/actuator/health/**").permitAll()
+            .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
             .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
-            .requestMatchers("/api/assessments/**").authenticated()
-            .anyRequest().authenticated()
+            .requestMatchers("/api/**").authenticated()
+            .anyRequest().permitAll()
         )
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
         .exceptionHandling(ex -> ex
@@ -71,7 +72,10 @@ public class SecurityConfig {
               );
             })
             .authenticationEntryPoint((req, res, e) -> {
-              log.error("Authentication failed: {}", e.getMessage());
+              String path = req.getRequestURI();
+              if (path != null && path.startsWith("/api/")) {
+                log.warn("Autenticación requerida: {} {} — {}", req.getMethod(), path, e.getMessage());
+              }
               res.setStatus(401);
               res.setContentType("application/json");
               res.getWriter().write(

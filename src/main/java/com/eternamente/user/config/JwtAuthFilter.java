@@ -28,27 +28,30 @@ public class JwtAuthFilter extends OncePerRequestFilter {
   }
 
   @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    String path = request.getRequestURI();
+    return "/".equals(path)
+        || "/health".equals(path)
+        || path.startsWith("/actuator");
+  }
+
+  @Override
   protected void doFilterInternal(
       HttpServletRequest request,
       HttpServletResponse response,
       FilterChain filterChain
   ) throws ServletException, IOException {
     String authHeader = resolveAuthHeader(request);
-    log.info("JWT Filter - Method: {}, Path: {}, Auth: {}", request.getMethod(), request.getRequestURI(), authHeader != null ? "present" : "null");
-
     if (authHeader == null) {
       filterChain.doFilter(request, response);
       return;
     }
 
     String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
-    log.info("JWT Filter - Token present: {}", token.substring(0, Math.min(20, token.length())));
 
-      try {
+    try {
       if (jwtService.isTokenValid(token)) {
         UUID userId = jwtService.extractUserId(token);
-        String email = jwtService.extractEmail(token);
-        log.info("JWT Filter - Token valid for user: {} ({})", email, userId);
 
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
             userId,
@@ -57,13 +60,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         );
 
         SecurityContextHolder.getContext().setAuthentication(authToken);
-        log.info("JWT Filter - Authentication set in context. Authorities: {}", 
-            SecurityContextHolder.getContext().getAuthentication().getAuthorities());
-      } else {
-        log.warn("JWT Filter - Token invalid or expired");
+      } else if (request.getRequestURI().startsWith("/api/")) {
+        log.warn("JWT inválido o expirado en {} {}", request.getMethod(), request.getRequestURI());
       }
     } catch (Exception e) {
-      log.error("JWT Filter - Error processing token: {}", e.getMessage());
+      log.warn("JWT no procesable en {} {}: {}", request.getMethod(), request.getRequestURI(), e.getMessage());
     }
 
     filterChain.doFilter(request, response);
