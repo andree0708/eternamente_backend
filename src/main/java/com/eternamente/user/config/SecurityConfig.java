@@ -1,6 +1,5 @@
 package com.eternamente.user.config;
 
-import com.eternamente.user.service.JwtService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,19 +19,23 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
-  private static final List<String> DEFAULT_DEV_ORIGINS = List.of(
-      "http://localhost:4321",
-      "http://localhost:3000",
-      "http://127.0.0.1:4321",
-      "http://127.0.0.1:3000"
+
+  /** Patrones por defecto: local + todos los despliegues de Vercel (preview y producción). */
+  private static final List<String> DEFAULT_ORIGIN_PATTERNS = List.of(
+      "http://localhost:*",
+      "http://127.0.0.1:*",
+      "https://*.vercel.app"
   );
 
   private final JwtAuthFilter jwtAuthFilter;
@@ -77,11 +80,11 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    List<String> allowedOrigins = resolveCorsOrigins();
-    log.info("Orígenes CORS permitidos: {}", allowedOrigins);
+    List<String> patterns = resolveCorsOriginPatterns();
+    log.info("Patrones CORS permitidos: {}", patterns);
 
-    configuration.setAllowedOrigins(allowedOrigins);
-    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    configuration.setAllowedOriginPatterns(patterns);
+    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
     configuration.setAllowedHeaders(List.of("*"));
     configuration.setExposedHeaders(List.of("Authorization"));
     configuration.setAllowCredentials(true);
@@ -92,18 +95,18 @@ public class SecurityConfig {
     return source;
   }
 
-  private List<String> resolveCorsOrigins() {
+  private List<String> resolveCorsOriginPatterns() {
+    Set<String> patterns = new LinkedHashSet<>(DEFAULT_ORIGIN_PATTERNS);
+
     if (corsOrigins != null && !corsOrigins.isBlank()) {
-      List<String> configured = Arrays.stream(corsOrigins.split(","))
+      Arrays.stream(corsOrigins.split(","))
           .map(String::trim)
           .map(s -> s.replaceAll("/$", ""))
           .filter(s -> !s.isEmpty())
-          .toList();
-      if (!configured.isEmpty()) {
-        return configured;
-      }
+          .forEach(patterns::add);
     }
-    return DEFAULT_DEV_ORIGINS;
+
+    return new ArrayList<>(patterns);
   }
 
   @Bean
