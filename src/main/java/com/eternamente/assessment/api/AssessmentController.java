@@ -1,8 +1,8 @@
 package com.eternamente.assessment.api;
 
 import com.eternamente.assessment.service.AssessmentService;
+import com.eternamente.common.api.ApiResponse;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,38 +25,46 @@ public class AssessmentController {
     this.assessmentService = assessmentService;
   }
 
+  /** POST /api/assessments — Guardar resultados de una partida */
   @PostMapping
-  public ResponseEntity<AssessmentResponse> create(
+  public ResponseEntity<ApiResponse<AssessmentResponse>> create(
       @Valid @RequestBody CreateAssessmentRequest request,
       @AuthenticationPrincipal UUID userId
   ) {
-    AssessmentResponse created = assessmentService.create(request, userId);
-    return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    return ApiResponse.created(assessmentService.create(request, userId));
   }
 
+  /** GET /api/assessments/summary — Resumen cognitivo acumulado */
   @GetMapping("/summary")
-  public CognitiveSummaryResponse getSummary(@AuthenticationPrincipal UUID userId) {
-    return assessmentService.getSummary(userId);
-  }
-
-  @GetMapping("/{id}")
-  public AssessmentResponse get(
-      @PathVariable UUID id,
+  public ResponseEntity<ApiResponse<CognitiveSummaryResponse>> getSummary(
       @AuthenticationPrincipal UUID userId
   ) {
-    return assessmentService.get(id, userId);
+    return ApiResponse.entity(assessmentService.getSummary(userId));
   }
 
+  /** GET /api/assessments — Listado de evaluaciones del usuario */
   @GetMapping
-  public List<AssessmentResponse> getMyAssessments(@AuthenticationPrincipal UUID userId) {
-    return assessmentService.getByUser(userId);
+  public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getMyAssessments(
+      @AuthenticationPrincipal UUID userId
+  ) {
+    return ApiResponse.entity(assessmentService.getByUser(userId));
   }
 
-  @GetMapping("/{id}/analysis")
-  public AssessmentAnalysisResponse getDetailedAnalysis(
+  /** GET /api/assessments/{id} — Detalle de una evaluación */
+  @GetMapping("/{id}")
+  public ResponseEntity<ApiResponse<AssessmentResponse>> get(
       @PathVariable UUID id,
       @AuthenticationPrincipal UUID userId
   ) {
-    return assessmentService.getDetailedAnalysis(id, userId);
+    return ApiResponse.entity(assessmentService.get(id, userId));
+  }
+
+  /** GET /api/assessments/{id}/analysis — Análisis detallado con IA */
+  @GetMapping("/{id}/analysis")
+  public ResponseEntity<ApiResponse<AssessmentAnalysisResponse>> getDetailedAnalysis(
+      @PathVariable UUID id,
+      @AuthenticationPrincipal UUID userId
+  ) {
+    return ApiResponse.entity(assessmentService.getDetailedAnalysis(id, userId));
   }
 }

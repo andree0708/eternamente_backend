@@ -1,5 +1,6 @@
 package com.eternamente.user.api;
 
+import com.eternamente.common.api.ApiResponse;
 import com.eternamente.user.service.AuthService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,8 +20,9 @@ public class UserController {
     this.authService = authService;
   }
 
+  /** GET /api/users/me — Perfil del usuario autenticado */
   @GetMapping("/me")
-  public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal UUID userId) {
-    return ResponseEntity.ok(authService.getCurrentUser(userId));
+  public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(@AuthenticationPrincipal UUID userId) {
+    return ApiResponse.entity(authService.getCurrentUser(userId));
   }
 }

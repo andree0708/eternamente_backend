@@ -1,8 +1,8 @@
 package com.eternamente.user.api;
 
+import com.eternamente.common.api.ApiResponse;
 import com.eternamente.user.service.AuthService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,15 +19,17 @@ public class AuthController {
     this.authService = authService;
   }
 
-  @PostMapping("/users")
-  public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-    AuthResponse response = authService.register(request);
-    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+  /** POST /api/v1/auth/login — Inicio de sesión */
+  @PostMapping("/auth/login")
+  public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest request) {
+    AuthResponse response = authService.login(request);
+    return ApiResponse.entity(response);
   }
 
-  @PostMapping("/auth/login")
-  public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-    AuthResponse response = authService.login(request);
-    return ResponseEntity.ok(response);
+  /** POST /api/v1/users — Registro de usuario */
+  @PostMapping("/users")
+  public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
+    AuthResponse response = authService.register(request);
+    return ApiResponse.created(response);
   }
 }

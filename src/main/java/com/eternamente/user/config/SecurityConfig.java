@@ -65,12 +65,18 @@ public class SecurityConfig {
             .accessDeniedHandler((req, res, e) -> {
               log.error("Access denied: {}", e.getMessage());
               res.setStatus(403);
-              res.getWriter().write("{\"error\":\"Access denied\"}");
+              res.setContentType("application/json");
+              res.getWriter().write(
+                  "{\"success\":false,\"data\":null,\"meta\":{\"version\":\"v1\"},\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Acceso denegado\"}}"
+              );
             })
             .authenticationEntryPoint((req, res, e) -> {
               log.error("Authentication failed: {}", e.getMessage());
               res.setStatus(401);
-              res.getWriter().write("{\"error\":\"Authentication required\"}");
+              res.setContentType("application/json");
+              res.getWriter().write(
+                  "{\"success\":false,\"data\":null,\"meta\":{\"version\":\"v1\"},\"error\":{\"code\":\"UNAUTHORIZED\",\"message\":\"Autenticación requerida\"}}"
+              );
             })
         );
 
