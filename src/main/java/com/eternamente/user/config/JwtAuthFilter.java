@@ -33,16 +33,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       HttpServletResponse response,
       FilterChain filterChain
   ) throws ServletException, IOException {
-    String authHeader = request.getHeader("Authorization");
+    String authHeader = resolveAuthHeader(request);
     log.info("JWT Filter - Method: {}, Path: {}, Auth: {}", request.getMethod(), request.getRequestURI(), authHeader != null ? "present" : "null");
 
-    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-      log.info("JWT Filter - No valid auth header, continuing...");
+    if (authHeader == null) {
       filterChain.doFilter(request, response);
       return;
     }
 
-    String token = authHeader.substring(7);
+    String token = authHeader.startsWith("Bearer ") ? authHeader.substring(7) : authHeader;
     log.info("JWT Filter - Token present: {}", token.substring(0, Math.min(20, token.length())));
 
       try {
@@ -68,5 +67,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     filterChain.doFilter(request, response);
+  }
+
+  private static String resolveAuthHeader(HttpServletRequest request) {
+    String authorization = request.getHeader("Authorization");
+    if (authorization != null && authorization.startsWith("Bearer ")) {
+      return authorization;
+    }
+    String xAuth = request.getHeader("X-Auth-Token");
+    if (xAuth != null && !xAuth.isBlank()) {
+      return "Bearer " + xAuth.trim();
+    }
+    return null;
   }
 }

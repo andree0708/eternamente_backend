@@ -34,7 +34,7 @@ public class CorsFilterConfig extends OncePerRequestFilter {
       response.setHeader("Access-Control-Allow-Origin", origin);
       response.setHeader("Access-Control-Allow-Credentials", "true");
       response.setHeader("Access-Control-Allow-Methods", String.join(", ", ALLOWED_METHODS));
-      response.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Origin");
+      response.setHeader("Access-Control-Allow-Headers", "Authorization, X-Auth-Token, Content-Type, Accept, Origin");
       response.setHeader("Access-Control-Expose-Headers", "Authorization");
       response.setHeader("Access-Control-Max-Age", "3600");
     }
