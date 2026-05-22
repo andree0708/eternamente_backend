@@ -34,9 +34,17 @@ public class AssessmentController {
     return ResponseEntity.status(HttpStatus.CREATED).body(created);
   }
 
+  @GetMapping("/summary")
+  public CognitiveSummaryResponse getSummary(@AuthenticationPrincipal UUID userId) {
+    return assessmentService.getSummary(userId);
+  }
+
   @GetMapping("/{id}")
-  public AssessmentResponse get(@PathVariable UUID id) {
-    return assessmentService.get(id);
+  public AssessmentResponse get(
+      @PathVariable UUID id,
+      @AuthenticationPrincipal UUID userId
+  ) {
+    return assessmentService.get(id, userId);
   }
 
   @GetMapping
@@ -52,4 +60,3 @@ public class AssessmentController {
     return assessmentService.getDetailedAnalysis(id, userId);
   }
 }
-
