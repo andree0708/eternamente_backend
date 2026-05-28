@@ -16,6 +16,9 @@ import com.eternamente.user.User;
 import com.eternamente.user.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +35,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class AssessmentService {
+
+  private static final Logger log = LoggerFactory.getLogger(AssessmentService.class);
 
   private final AssessmentSessionRepository repository;
   private final UserRepository userRepository;
@@ -75,8 +80,23 @@ public class AssessmentService {
     session.setPredictedDcl(prediction.predictedDcl());
     session.setMlRunAt(Instant.now());
 
-    AssessmentSession saved = repository.save(session);
-    updateCognitiveSummary(user, gameType, prediction.riskScore(), request.metrics());
+    AssessmentSession saved;
+    try {
+      saved = repository.save(session);
+    } catch (DataIntegrityViolationException ex) {
+      log.error("No se pudo guardar assessment_session para userId={}: {}", userId, ex.getMessage());
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT,
+          "No se pudo guardar la partida. Ejecuta las migraciones de base de datos (Flyway V4-V7) en Render."
+      );
+    }
+
+    try {
+      updateCognitiveSummary(user, gameType, prediction.riskScore(), request.metrics());
+    } catch (Exception ex) {
+      log.warn("Partida guardada pero falló actualización de resumen cognitivo: {}", ex.getMessage());
+    }
+
     return AssessmentResponse.from(saved, userId, objectMapper);
   }
 

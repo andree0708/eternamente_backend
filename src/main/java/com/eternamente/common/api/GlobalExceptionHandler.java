@@ -2,6 +2,7 @@ package com.eternamente.common.api;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -28,6 +29,16 @@ public class GlobalExceptionHandler {
         .map(err -> err.getDefaultMessage() != null ? err.getDefaultMessage() : "Datos inválidos")
         .orElse("Revisa los datos del formulario");
     return ApiResponse.error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message);
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+    log.error("Violación de integridad en BD: {}", ex.getMostSpecificCause().getMessage());
+    String detail = ex.getMostSpecificCause().getMessage();
+    String message = detail != null && detail.contains("user_external_id")
+        ? "Error al guardar la partida: columna legacy en base de datos. Despliega la migración V7 del backend."
+        : "No se pudo guardar en la base de datos. Revisa que las migraciones Flyway estén aplicadas.";
+    return ApiResponse.error(HttpStatus.CONFLICT, "DB_INTEGRITY_ERROR", message);
   }
 
   @ExceptionHandler(Exception.class)

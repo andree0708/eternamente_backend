@@ -27,6 +27,10 @@ public class AssessmentSession {
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
 
+  /** Columna legacy en PostgreSQL; se rellena con el email del usuario al guardar. */
+  @Column(name = "user_external_id", length = 255)
+  private String userExternalId;
+
   @Column(name = "age", nullable = false)
   private Integer age;
 
@@ -66,6 +70,9 @@ public class AssessmentSession {
     if (mlRunAt == null) {
       mlRunAt = Instant.now();
     }
+    if (user != null && (userExternalId == null || userExternalId.isBlank())) {
+      userExternalId = user.getEmail();
+    }
   }
 
   public UUID getId() {
@@ -78,6 +85,17 @@ public class AssessmentSession {
 
   public void setUser(User user) {
     this.user = user;
+    if (user != null && user.getEmail() != null) {
+      this.userExternalId = user.getEmail();
+    }
+  }
+
+  public String getUserExternalId() {
+    return userExternalId;
+  }
+
+  public void setUserExternalId(String userExternalId) {
+    this.userExternalId = userExternalId;
   }
 
   public Integer getAge() {
