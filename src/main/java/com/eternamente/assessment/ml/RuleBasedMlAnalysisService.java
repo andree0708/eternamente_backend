@@ -18,6 +18,10 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
       case "stroop" -> analyzeStroop(metrics);
       case "whackamole" -> analyzeWhackamole(metrics);
       case "navigation" -> analyzeNavigation(metrics);
+      case "digitspan" -> analyzeDigitSpan(metrics);
+      case "corsi" -> analyzeCorsi(metrics);
+      case "orientation" -> analyzeOrientation(metrics);
+      case "arithmetic" -> analyzeArithmetic(metrics);
       default -> analyzeMemory(metrics);
     };
   }
@@ -168,6 +172,36 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     } catch (Exception ignored) {
       return defaultValue;
     }
+  }
+
+  private MlPrediction analyzeDigitSpan(Map<String, Object> metrics) {
+    double accuracy = readDouble(metrics, "accuracy", 0.0);
+    int achievedLevel = (int) readDouble(metrics, "achievedLevel", 0);
+    int maxLevel = (int) readDouble(metrics, "maxLevel", 5);
+    double levelProgress = maxLevel > 0 ? (double) achievedLevel / maxLevel : 0;
+    double riskScore = clamp01(0.55 * (1.0 - accuracy) + 0.45 * (1.0 - levelProgress));
+    return new MlPrediction("rule-v1-digitspan", riskScore, riskScore >= 0.6);
+  }
+
+  private MlPrediction analyzeCorsi(Map<String, Object> metrics) {
+    return analyzeDigitSpan(metrics);
+  }
+
+  private MlPrediction analyzeOrientation(Map<String, Object> metrics) {
+    double accuracy = readDouble(metrics, "accuracy", 0.0);
+    double riskScore = clamp01(1.0 - accuracy);
+    return new MlPrediction("rule-v1-orientation", riskScore, riskScore >= 0.6);
+  }
+
+  private MlPrediction analyzeArithmetic(Map<String, Object> metrics) {
+    double accuracy = readDouble(metrics, "accuracy", 0.0);
+    double avgReactionTime = readDouble(metrics, "averageReactionTimeMs", Double.NaN);
+    double accuracyRisk = clamp01(1.0 - accuracy);
+    double reactionTimeRisk = Double.isNaN(avgReactionTime)
+        ? 0.5
+        : clamp01((avgReactionTime - 1500) / 6000);
+    double riskScore = clamp01(0.65 * accuracyRisk + 0.35 * reactionTimeRisk);
+    return new MlPrediction("rule-v1-arithmetic", riskScore, riskScore >= 0.6);
   }
 
   private static double clamp01(double x) {
