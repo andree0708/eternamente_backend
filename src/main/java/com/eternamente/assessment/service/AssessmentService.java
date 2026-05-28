@@ -9,9 +9,11 @@ import com.eternamente.assessment.api.AssessmentAnalysisResponse;
 import com.eternamente.assessment.api.AssessmentResponse;
 import com.eternamente.assessment.api.CognitiveSummaryResponse;
 import com.eternamente.assessment.api.CreateAssessmentRequest;
+import com.eternamente.assessment.ml.AlertLevel;
 import com.eternamente.assessment.ml.GroqCognitiveAnalysisService;
 import com.eternamente.assessment.ml.MlAnalysisService;
 import com.eternamente.assessment.ml.MlPrediction;
+import com.eternamente.assessment.ml.RuleBasedMlAnalysisService;
 import com.eternamente.user.User;
 import com.eternamente.user.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -42,6 +44,7 @@ public class AssessmentService {
   private final UserRepository userRepository;
   private final UserCognitiveSummaryRepository summaryRepository;
   private final MlAnalysisService mlAnalysisService;
+  private final RuleBasedMlAnalysisService ruleBasedMlAnalysisService;
   private final GroqCognitiveAnalysisService groqCognitiveAnalysisService;
   private final ObjectMapper objectMapper;
 
@@ -50,6 +53,7 @@ public class AssessmentService {
       UserRepository userRepository,
       UserCognitiveSummaryRepository summaryRepository,
       MlAnalysisService mlAnalysisService,
+      RuleBasedMlAnalysisService ruleBasedMlAnalysisService,
       GroqCognitiveAnalysisService groqCognitiveAnalysisService,
       ObjectMapper objectMapper
   ) {
@@ -57,6 +61,7 @@ public class AssessmentService {
     this.userRepository = userRepository;
     this.summaryRepository = summaryRepository;
     this.mlAnalysisService = mlAnalysisService;
+    this.ruleBasedMlAnalysisService = ruleBasedMlAnalysisService;
     this.groqCognitiveAnalysisService = groqCognitiveAnalysisService;
     this.objectMapper = objectMapper;
   }
@@ -66,29 +71,37 @@ public class AssessmentService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
-    MlPrediction prediction = mlAnalysisService.analyze(userId, request.metrics());
+    MlPrediction prediction = resolvePrediction(userId, request.metrics());
     String metricsJson = toMetricsJson(request.metrics());
     String gameType = resolveGameType(request.metrics());
 
     AssessmentSession session = new AssessmentSession();
     session.setUser(user);
+    session.setUserExternalId(user.getEmail());
     session.setAge(request.age());
     session.setMetricsJson(metricsJson);
     session.setGameType(gameType);
     session.setModelVersion(prediction.modelVersion());
     session.setRiskScore(prediction.riskScore());
     session.setPredictedDcl(prediction.predictedDcl());
-    session.setAlertLevel(prediction.alertLevel().name());
+    AlertLevel alert = prediction.alertLevel() != null ? prediction.alertLevel() : AlertLevel.NORMAL;
+    session.setAlertLevel(alert.name());
     session.setMlRunAt(Instant.now());
 
     AssessmentSession saved;
     try {
       saved = repository.save(session);
     } catch (DataIntegrityViolationException ex) {
-      log.error("No se pudo guardar assessment_session para userId={}: {}", userId, ex.getMessage());
+      log.error("No se pudo guardar assessment_session para userId={}: {}", userId, ex.getMessage(), ex);
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "No se pudo guardar la partida. Ejecuta las migraciones de base de datos (Flyway V4-V7) en Render."
+          "No se pudo guardar la partida. Revisa migraciones Flyway en Render (V7-V9)."
+      );
+    } catch (Exception ex) {
+      log.error("Error al persistir assessment_session userId={}: {}", userId, ex.getMessage(), ex);
+      throw new ResponseStatusException(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          "Error al guardar la partida en el servidor."
       );
     }
 
@@ -241,6 +254,15 @@ public class AssessmentService {
       return n.doubleValue();
     }
     return null;
+  }
+
+  private MlPrediction resolvePrediction(UUID userId, Map<String, Object> metrics) {
+    try {
+      return mlAnalysisService.analyze(userId, metrics);
+    } catch (Exception ex) {
+      log.error("Análisis ML falló para userId={}, fallback reglas: {}", userId, ex.getMessage(), ex);
+      return ruleBasedMlAnalysisService.analyze(userId, metrics);
+    }
   }
 
   private static String resolveGameType(Map<String, Object> metrics) {

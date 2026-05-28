@@ -41,6 +41,16 @@ public class GlobalExceptionHandler {
     return ApiResponse.error(HttpStatus.CONFLICT, "DB_INTEGRITY_ERROR", message);
   }
 
+  @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+  public ResponseEntity<ApiResponse<Void>> handleDataAccess(org.springframework.dao.DataAccessException ex) {
+    log.error("Error de acceso a datos: {}", ex.getMostSpecificCause().getMessage(), ex);
+    return ApiResponse.error(
+        HttpStatus.CONFLICT,
+        "DB_ERROR",
+        "Error de base de datos. Comprueba que Flyway aplicó las migraciones V7-V9."
+    );
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
     log.error("Error no controlado: {}", ex.getMessage(), ex);

@@ -17,6 +17,10 @@ repositories {
 	mavenCentral()
 }
 
+ext {
+	set('flyway.version', '11.7.2')
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'

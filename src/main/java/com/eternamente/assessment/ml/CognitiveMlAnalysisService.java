@@ -63,6 +63,15 @@ public class CognitiveMlAnalysisService implements MlAnalysisService {
 
   @Override
   public MlPrediction analyze(UUID userId, Map<String, Object> metrics) {
+    try {
+      return analyzeCognitive(userId, metrics);
+    } catch (Exception ex) {
+      log.error("Pipeline cognitivo falló para userId={}, usando reglas: {}", userId, ex.getMessage(), ex);
+      return ruleBased.analyze(userId, metrics);
+    }
+  }
+
+  private MlPrediction analyzeCognitive(UUID userId, Map<String, Object> metrics) {
     List<FeatureExtractor.SessionPoint> points = loadHistory(userId);
     String gameType = resolveGameType(metrics);
     points.add(new FeatureExtractor.SessionPoint(Instant.now(), gameType, metrics));
@@ -91,8 +100,7 @@ public class CognitiveMlAnalysisService implements MlAnalysisService {
 
   private List<FeatureExtractor.SessionPoint> loadHistory(UUID userId) {
     Instant after = Instant.now().minus(4 * 7L, ChronoUnit.DAYS);
-    List<AssessmentSession> sessions =
-        sessionRepository.findByUser_IdAndCreatedAtAfterOrderByCreatedAtAsc(userId, after);
+    List<AssessmentSession> sessions = sessionRepository.findRecentByUserId(userId, after);
     List<FeatureExtractor.SessionPoint> points = new ArrayList<>();
     for (AssessmentSession s : sessions) {
       String type = s.getGameType() != null ? s.getGameType() : "memory";
