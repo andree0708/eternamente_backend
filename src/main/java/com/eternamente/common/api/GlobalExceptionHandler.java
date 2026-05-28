@@ -25,8 +25,8 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
     String message = ex.getBindingResult().getFieldErrors().stream()
         .findFirst()
-        .map(err -> err.getField() + ": " + err.getDefaultMessage())
-        .orElse("Datos inválidos");
+        .map(err -> err.getDefaultMessage() != null ? err.getDefaultMessage() : "Datos inválidos")
+        .orElse("Revisa los datos del formulario");
     return ApiResponse.error(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", message);
   }
 

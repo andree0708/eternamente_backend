@@ -32,12 +32,12 @@ public class AuthService {
 
   public AuthResponse register(RegisterRequest request) {
     if (userRepository.existsByEmail(request.email())) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Email ya registrado");
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Este correo ya está registrado");
     }
 
     User user = new User();
     user.setEmail(request.email());
-    user.setPasswordHash(passwordEncoder.encode(request.password()));
+    user.setPasswordHash(passwordEncoder.encode(ClientPasswordSupport.normalizeForStorage(request.password())));
     user.setRole(request.role());
     user.setFullName(request.fullName());
 
@@ -49,10 +49,11 @@ public class AuthService {
 
   public AuthResponse login(LoginRequest request) {
     User user = userRepository.findByEmail(request.email())
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas"));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos"));
 
-    if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+    String normalized = ClientPasswordSupport.normalizeForStorage(request.password());
+    if (!passwordEncoder.matches(normalized, user.getPasswordHash())) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos");
     }
 
     String token = jwtService.generateToken(user.getId(), user.getEmail());
