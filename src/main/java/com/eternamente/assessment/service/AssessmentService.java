@@ -66,7 +66,7 @@ public class AssessmentService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
-    MlPrediction prediction = mlAnalysisService.analyze(request.metrics());
+    MlPrediction prediction = mlAnalysisService.analyze(userId, request.metrics());
     String metricsJson = toMetricsJson(request.metrics());
     String gameType = resolveGameType(request.metrics());
 
@@ -78,6 +78,7 @@ public class AssessmentService {
     session.setModelVersion(prediction.modelVersion());
     session.setRiskScore(prediction.riskScore());
     session.setPredictedDcl(prediction.predictedDcl());
+    session.setAlertLevel(prediction.alertLevel().name());
     session.setMlRunAt(Instant.now());
 
     AssessmentSession saved;

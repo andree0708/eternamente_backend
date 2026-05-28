@@ -3,6 +3,7 @@ package com.eternamente.assessment;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,5 +12,7 @@ public interface AssessmentSessionRepository extends JpaRepository<AssessmentSes
     List<AssessmentSession> findByUserId(UUID userId);
     java.util.Optional<AssessmentSession> findByIdAndUserId(UUID id, UUID userId);
     List<AssessmentSession> findTop10ByUserIdOrderByCreatedAtDesc(UUID userId);
+
+    List<AssessmentSession> findByUser_IdAndCreatedAtAfterOrderByCreatedAtAsc(UUID userId, Instant after);
 }
 

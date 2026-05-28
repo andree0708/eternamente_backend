@@ -50,6 +50,9 @@ public class AssessmentSession {
   @Column(name = "predicted_dcl", nullable = false)
   private Boolean predictedDcl;
 
+  @Column(name = "alert_level", length = 16)
+  private String alertLevel;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -144,6 +147,14 @@ public class AssessmentSession {
 
   public void setPredictedDcl(Boolean predictedDcl) {
     this.predictedDcl = predictedDcl;
+  }
+
+  public String getAlertLevel() {
+    return alertLevel;
+  }
+
+  public void setAlertLevel(String alertLevel) {
+    this.alertLevel = alertLevel;
   }
 
   public Instant getCreatedAt() {

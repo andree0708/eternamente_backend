@@ -8,7 +8,7 @@ import java.util.Map;
 public class RuleBasedMlAnalysisService implements MlAnalysisService {
 
   @Override
-  public MlPrediction analyze(Map<String, Object> metrics) {
+  public MlPrediction analyze(java.util.UUID userId, Map<String, Object> metrics) {
     Object rawType = metrics.get("gameType");
     String gameType = rawType != null && !String.valueOf(rawType).isBlank()
         ? String.valueOf(rawType)
@@ -47,9 +47,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     
     double riskScore = 0.40 * accuracyRisk + 0.35 * reactionTimeRisk + 0.25 * errorRisk;
     riskScore = clamp01(riskScore);
-    boolean predictedDcl = riskScore >= 0.6;
-    
-    return new MlPrediction("rule-v1-stroop", riskScore, predictedDcl);
+    return rulesPrediction("rule-v1-stroop", riskScore);
   }
 
   private MlPrediction analyzeWhackamole(Map<String, Object> metrics) {
@@ -69,9 +67,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     
     double riskScore = 0.50 * accuracyRisk + 0.50 * reactionTimeRisk;
     riskScore = clamp01(riskScore);
-    boolean predictedDcl = riskScore >= 0.6;
-    
-    return new MlPrediction("rule-v1-whackamole", riskScore, predictedDcl);
+    return rulesPrediction("rule-v1-whackamole", riskScore);
   }
 
   private MlPrediction analyzeNavigation(Map<String, Object> metrics) {
@@ -88,9 +84,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     
     double riskScore = 0.60 * levelRisk + 0.40 * errorRisk;
     riskScore = clamp01(riskScore);
-    boolean predictedDcl = riskScore >= 0.6;
-    
-    return new MlPrediction("rule-v1-navigation", riskScore, predictedDcl);
+    return rulesPrediction("rule-v1-navigation", riskScore);
   }
 
   private MlPrediction analyzeMemory(Map<String, Object> metrics) {
@@ -151,9 +145,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
         0.15d * efficiencyRisk +
         0.10d * paceRisk;
     riskScore = clamp01(riskScore);
-    boolean predictedDcl = riskScore >= 0.6d;
-
-    return new MlPrediction("rule-v2-memory", riskScore, predictedDcl);
+    return rulesPrediction("rule-v2-memory", riskScore);
   }
 
   private static double readDouble(Map<String, Object> metrics, String key, double defaultValue) {
@@ -180,7 +172,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
     int maxLevel = (int) readDouble(metrics, "maxLevel", 5);
     double levelProgress = maxLevel > 0 ? (double) achievedLevel / maxLevel : 0;
     double riskScore = clamp01(0.55 * (1.0 - accuracy) + 0.45 * (1.0 - levelProgress));
-    return new MlPrediction("rule-v1-digitspan", riskScore, riskScore >= 0.6);
+    return rulesPrediction("rule-v1-digitspan", riskScore);
   }
 
   private MlPrediction analyzeCorsi(Map<String, Object> metrics) {
@@ -190,7 +182,7 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
   private MlPrediction analyzeOrientation(Map<String, Object> metrics) {
     double accuracy = readDouble(metrics, "accuracy", 0.0);
     double riskScore = clamp01(1.0 - accuracy);
-    return new MlPrediction("rule-v1-orientation", riskScore, riskScore >= 0.6);
+    return rulesPrediction("rule-v1-orientation", riskScore);
   }
 
   private MlPrediction analyzeArithmetic(Map<String, Object> metrics) {
@@ -201,7 +193,22 @@ public class RuleBasedMlAnalysisService implements MlAnalysisService {
         ? 0.5
         : clamp01((avgReactionTime - 1500) / 6000);
     double riskScore = clamp01(0.65 * accuracyRisk + 0.35 * reactionTimeRisk);
-    return new MlPrediction("rule-v1-arithmetic", riskScore, riskScore >= 0.6);
+    return rulesPrediction("rule-v1-arithmetic", riskScore);
+  }
+
+  private static MlPrediction rulesPrediction(String modelVersion, double riskScore) {
+    AlertLevel level = alertFromRisk(riskScore);
+    return new MlPrediction(modelVersion, riskScore, level == AlertLevel.ALERT, level, "");
+  }
+
+  private static AlertLevel alertFromRisk(double riskScore) {
+    if (riskScore > 0.70d) {
+      return AlertLevel.ALERT;
+    }
+    if (riskScore >= 0.40d) {
+      return AlertLevel.WATCH;
+    }
+    return AlertLevel.NORMAL;
   }
 
   private static double clamp01(double x) {

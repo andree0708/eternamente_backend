@@ -11,8 +11,9 @@ API REST Spring Boot para evaluaciones cognitivas.
 | **Service Layer** | `*Service.java` | Lógica de negocio |
 | **DTO / Record** | `api/*Response.java`, `*Request.java` | Contratos de entrada/salida |
 | **Facade** | `ApiResponse.java` | Respuesta HTTP uniforme |
-| **Strategy** | `MlAnalysisService` + implementaciones | Análisis por reglas / Groq / Ollama |
-| **Template Method** | `RuleBasedMlAnalysisService` switch por `gameType` | Algoritmo según juego |
+| **Strategy** | `MlAnalysisService` + implementaciones | Pipeline cognitivo (IF + estadístico) o reglas por juego |
+| **Template Method** | `RuleBasedMlAnalysisService` switch por `gameType` | Fallback si hay &lt; 3 sesiones |
+| **Pipeline ML** | `CognitiveMlAnalysisService` | FeatureExtractor → Isolation Forest → alerta NORMAL/WATCH/ALERT |
 | **Filter Chain** | `JwtAuthFilter`, `CorsFilterConfig` | Seguridad y CORS |
 | **Dependency Injection** | Spring `@Service`, `@RestController` | Inversión de control |
 | **Adapter** | `GroqCognitiveAnalysisService` | Integración API externa Groq |
@@ -26,7 +27,13 @@ com.eternamente/
 ├── common/api/          # ApiResponse, GlobalExceptionHandler
 ├── user/              # Auth, JWT, usuarios
 └── assessment/        # Partidas, ML, resumen cognitivo
+    └── ml/            # FeatureExtractor, IsolationForest, CognitiveAnalyzer
 ```
+
+### Motor ML (`ml.engine`)
+
+- `cognitive` (default): 14 features, Isolation Forest, estimador estadístico (fallback TFLite), alertas según doc. migración.
+- `rules`: solo heurísticas por juego (partidas 1–2 del usuario).
 
 ## API
 
