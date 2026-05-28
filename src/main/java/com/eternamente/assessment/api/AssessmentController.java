@@ -42,6 +42,14 @@ public class AssessmentController {
     return ApiResponse.entity(assessmentService.getSummary(userId));
   }
 
+  /** GET /api/assessments/analytics — Datos agregados para el panel principal */
+  @GetMapping("/analytics")
+  public ResponseEntity<ApiResponse<AnalyticsResponse>> getAnalytics(
+      @AuthenticationPrincipal UUID userId
+  ) {
+    return ApiResponse.entity(assessmentService.getAnalytics(userId));
+  }
+
   /** GET /api/assessments — Listado de evaluaciones del usuario */
   @GetMapping
   public ResponseEntity<ApiResponse<List<AssessmentResponse>>> getMyAssessments(

@@ -4,6 +4,7 @@ import com.eternamente.assessment.AssessmentSession;
 import com.eternamente.assessment.AssessmentSessionRepository;
 import com.eternamente.assessment.UserCognitiveSummary;
 import com.eternamente.assessment.UserCognitiveSummaryRepository;
+import com.eternamente.assessment.api.AnalyticsResponse;
 import com.eternamente.assessment.api.AssessmentAnalysisResponse;
 import com.eternamente.assessment.api.AssessmentResponse;
 import com.eternamente.assessment.api.CognitiveSummaryResponse;
@@ -21,9 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AssessmentService {
@@ -99,6 +104,64 @@ public class AssessmentService {
   }
 
   @Transactional(readOnly = true)
+  public AnalyticsResponse getAnalytics(UUID userId) {
+    CognitiveSummaryResponse summary = getSummary(userId);
+    List<AssessmentSession> sessions = repository.findByUserId(userId);
+
+    Map<String, List<AssessmentSession>> grouped = sessions.stream()
+        .collect(Collectors.groupingBy(
+            s -> s.getGameType() != null ? s.getGameType() : "memory",
+            LinkedHashMap::new,
+            Collectors.toList()
+        ));
+
+    List<AnalyticsResponse.GameTypeStat> byGameType = grouped.entrySet().stream()
+        .map(entry -> {
+          List<AssessmentSession> list = entry.getValue();
+          double avgRisk = list.stream()
+              .mapToDouble(AssessmentSession::getRiskScore)
+              .average()
+              .orElse(0d);
+          var accuracyAvg = list.stream()
+              .map(s -> readAccuracy(parseMetrics(s.getMetricsJson())))
+              .filter(a -> a != null)
+              .mapToDouble(Double::doubleValue)
+              .average();
+          Double avgAccuracy = accuracyAvg.isPresent() ? accuracyAvg.getAsDouble() : null;
+          return new AnalyticsResponse.GameTypeStat(
+              entry.getKey(),
+              list.size(),
+              avgRisk,
+              avgAccuracy
+          );
+        })
+        .sorted(Comparator.comparingInt(AnalyticsResponse.GameTypeStat::sessions).reversed())
+        .toList();
+
+    List<AnalyticsResponse.RiskTrendPoint> riskTrend = sessions.stream()
+        .sorted(Comparator.comparing(AssessmentSession::getCreatedAt).reversed())
+        .limit(20)
+        .map(s -> new AnalyticsResponse.RiskTrendPoint(
+            s.getCreatedAt(),
+            s.getRiskScore(),
+            s.getGameType() != null ? s.getGameType() : "memory"
+        ))
+        .collect(Collectors.toCollection(ArrayList::new));
+    riskTrend.sort(Comparator.comparing(AnalyticsResponse.RiskTrendPoint::playedAt));
+
+    return new AnalyticsResponse(summary, byGameType, riskTrend);
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> parseMetrics(String metricsJson) {
+    try {
+      return objectMapper.readValue(metricsJson, Map.class);
+    } catch (JsonProcessingException e) {
+      return Map.of();
+    }
+  }
+
+  @Transactional(readOnly = true)
   public AssessmentAnalysisResponse getDetailedAnalysis(UUID id, UUID userId) {
     AssessmentSession session = repository.findByIdAndUserId(id, userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assessment no encontrada"));
@@ -132,6 +195,9 @@ public class AssessmentService {
       case "stroop" -> summary.setStroopSessions(summary.getStroopSessions() + 1);
       case "navigation" -> summary.setNavigationSessions(summary.getNavigationSessions() + 1);
       case "whackamole" -> summary.setWhackamoleSessions(summary.getWhackamoleSessions() + 1);
+      case "memory", "digitspan", "corsi" -> summary.setMemorySessions(summary.getMemorySessions() + 1);
+      case "orientation" -> summary.setNavigationSessions(summary.getNavigationSessions() + 1);
+      case "arithmetic" -> summary.setStroopSessions(summary.getStroopSessions() + 1);
       default -> summary.setMemorySessions(summary.getMemorySessions() + 1);
     }
 
