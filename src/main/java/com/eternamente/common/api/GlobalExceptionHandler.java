@@ -73,7 +73,9 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
   public ResponseEntity<ApiResponse<Void>> handleMessageNotReadable(HttpMessageNotReadableException ex) {
-    return ApiResponse.error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "El cuerpo de la solicitud es inválido o está malformado");
+    String detail = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+    log.warn("Error de lectura del body: {}", detail, ex);
+    return ApiResponse.error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", "El cuerpo de la solicitud es inválido: " + detail);
   }
 
   @ExceptionHandler(Exception.class)
