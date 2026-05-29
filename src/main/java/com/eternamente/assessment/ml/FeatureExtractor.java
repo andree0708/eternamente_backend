@@ -44,12 +44,12 @@ public class FeatureExtractor {
     raw[0] = (float) defaultIfNaN(meanRt(window, GameDomainMapper.Domain.MEMORY), 1500d);
     raw[1] = (float) defaultIfNaN(meanRt(window, GameDomainMapper.Domain.ATTENTION), 1500d);
     raw[2] = (float) defaultIfNaN(meanRt(window, GameDomainMapper.Domain.EXECUTIVE), 1500d);
-    raw[3] = 1500f;
+    raw[3] = (float) defaultIfNaN(meanRt(window, GameDomainMapper.Domain.PROCESSING_SPEED), 1500d);
 
     raw[4] = (float) defaultIfNaN(meanAccuracy(window, GameDomainMapper.Domain.MEMORY), 50d);
     raw[5] = (float) defaultIfNaN(meanAccuracy(window, GameDomainMapper.Domain.ATTENTION), 50d);
     raw[6] = (float) defaultIfNaN(meanAccuracy(window, GameDomainMapper.Domain.EXECUTIVE), 50d);
-    raw[7] = 50f;
+    raw[7] = (float) defaultIfNaN(meanAccuracy(window, GameDomainMapper.Domain.PROCESSING_SPEED), 50d);
     raw[8] = (float) defaultIfNaN(meanAccuracy(window, GameDomainMapper.Domain.ORIENTATION), 50d);
 
     raw[9] = (float) defaultIfNaN(accuracyTrend(window, GameDomainMapper.Domain.MEMORY), 0d);

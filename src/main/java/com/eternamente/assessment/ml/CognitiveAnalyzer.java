@@ -41,7 +41,7 @@ public class CognitiveAnalyzer {
       flagged.add("EXECUTIVE");
     }
     if (n[7] < 0.35f || n[3] > 0.70f) {
-      flagged.add("LANGUAGE");
+      flagged.add("PROCESSING_SPEED");
     }
     if (n[8] < 0.35f) {
       flagged.add("ORIENTATION");
