@@ -208,7 +208,7 @@ public class AssessmentService {
     long str = sessions.stream().filter(s -> List.of("stroop","arithmetic").contains(s.getGameType())).count();
     long nav = sessions.stream().filter(s -> List.of("navigation","orientation").contains(s.getGameType())).count();
     long whack = sessions.stream().filter(s -> "whackamole".equals(s.getGameType())).count();
-    return new CognitiveSummaryResponse(userId, sessions.size(), avgRisk, accuracy, (int)mem, (int)str, (int)nav, (int)whack, null, null);
+    return new CognitiveSummaryResponse(userId, sessions.size(), avgRisk, null, (int)mem, (int)str, (int)nav, (int)whack, accuracy, null);
   }
 
   private Map<String, Object> sanitizeMetrics(Map<String, Object> raw) {
