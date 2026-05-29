@@ -75,8 +75,25 @@ public class AssessmentSession {
     if (mlRunAt == null) {
       mlRunAt = Instant.now();
     }
-    if (user != null && (userExternalId == null || userExternalId.isBlank())) {
-      userExternalId = user.getEmail();
+    ensureLegacyColumns();
+  }
+
+  /** Rellena columnas legacy que PostgreSQL puede exigir aunque Hibernate no las incluya en INSERT. */
+  public void ensureLegacyColumns() {
+    if (userExternalId == null || userExternalId.isBlank()) {
+      if (user != null && user.getEmail() != null && !user.getEmail().isBlank()) {
+        userExternalId = user.getEmail();
+      } else if (user != null && user.getId() != null) {
+        userExternalId = user.getId().toString();
+      } else {
+        userExternalId = "anonymous";
+      }
+    }
+    if (gameType == null || gameType.isBlank()) {
+      gameType = "memory";
+    }
+    if (alertLevel == null || alertLevel.isBlank()) {
+      alertLevel = "NORMAL";
     }
   }
 

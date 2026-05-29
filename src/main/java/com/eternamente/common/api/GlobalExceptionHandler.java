@@ -54,6 +54,14 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
     log.error("Error no controlado: {}", ex.getMessage(), ex);
+    String msg = ex.getMessage();
+    if (msg != null && msg.contains("user_external_id")) {
+      return ApiResponse.error(
+          HttpStatus.CONFLICT,
+          "DB_LEGACY_COLUMN",
+          "Error al guardar: actualiza el backend (migración V10) en Render."
+      );
+    }
     return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Error interno del servidor");
   }
 }

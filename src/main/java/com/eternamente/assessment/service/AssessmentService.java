@@ -86,6 +86,7 @@ public class AssessmentService {
     AlertLevel alert = prediction.alertLevel() != null ? prediction.alertLevel() : AlertLevel.NORMAL;
     session.setAlertLevel(alert.name());
     session.setMlRunAt(Instant.now());
+    session.ensureLegacyColumns();
 
     AssessmentSession saved;
     try {
