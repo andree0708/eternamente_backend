@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.PageRequest;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -83,6 +84,9 @@ public class CognitiveMlAnalysisService implements MlAnalysisService {
 
     float[] raw = sanitizeRaw(featureExtractor.extractRaw(points));
     FeatureVector vector = featureNormalizer.normalize(raw);
+    if (!isolationForest.hasHistory(userId)) {
+      warmupForest(userId);
+    }
     float anomaly = isolationForest.anomalyScore(userId, vector.normalized());
     float statRisk = statisticalRiskEstimator.estimate(vector);
     CognitiveAnalyzer.AnalysisResult result = cognitiveAnalyzer.analyze(vector, anomaly, statRisk);
@@ -111,6 +115,27 @@ public class CognitiveMlAnalysisService implements MlAnalysisService {
       ));
     }
     return points;
+  }
+
+  private void warmupForest(UUID userId) {
+    try {
+      List<UserMlFeatureSnapshot> snapshots = snapshotRepository
+          .findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, 200));
+      if (snapshots.isEmpty()) return;
+      List<float[]> vectors = new ArrayList<>();
+      for (UserMlFeatureSnapshot snap : snapshots) {
+        float[] arr = new float[FeatureVector.SIZE];
+        List<Double> list = snap.getFeatures();
+        for (int i = 0; i < FeatureVector.SIZE && i < list.size(); i++) {
+          arr[i] = list.get(i).floatValue();
+        }
+        vectors.add(arr);
+      }
+      isolationForest.warmup(userId, vectors);
+      log.info("Isolation Forest warmeado para {} con {} snapshots", userId, vectors.size());
+    } catch (Exception ex) {
+      log.warn("No se pudo warmear Isolation Forest para {}: {}", userId, ex.getMessage());
+    }
   }
 
   private void persistSnapshot(UUID userId, float[] normalized) {

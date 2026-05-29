@@ -20,6 +20,21 @@ public class IsolationForestModel {
 
   private final ConcurrentHashMap<java.util.UUID, List<float[]>> historyByUser = new ConcurrentHashMap<>();
 
+  public boolean hasHistory(java.util.UUID userId) {
+    return historyByUser.containsKey(userId) && !historyByUser.get(userId).isEmpty();
+  }
+
+  public void warmup(java.util.UUID userId, List<float[]> historicalVectors) {
+    List<float[]> history = historyByUser.computeIfAbsent(userId, id -> new ArrayList<>());
+    synchronized (history) {
+      if (!history.isEmpty()) return;
+      for (float[] v : historicalVectors) {
+        if (history.size() >= MAX_HISTORY) break;
+        history.add(v.clone());
+      }
+    }
+  }
+
   public float anomalyScore(java.util.UUID userId, float[] normalizedFeatures) {
     List<float[]> history = historyByUser.computeIfAbsent(userId, id -> new ArrayList<>());
     synchronized (history) {
