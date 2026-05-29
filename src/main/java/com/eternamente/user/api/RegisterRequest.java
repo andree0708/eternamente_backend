@@ -14,6 +14,6 @@ public record RegisterRequest(
     @JsonProperty("password") @NotBlank(message = "La contraseña es obligatoria") @Size(min = 6, message = "La contraseña debe tener al menos 6 caracteres") String password,
     @JsonProperty("role") @NotNull UserRole role,
     @JsonProperty("fullName") @NotBlank(message = "El nombre es obligatorio") String fullName,
-    @JsonProperty("age") @NotNull @Min(1) @Max(120) Integer age
+    @JsonProperty("age") @NotNull @Min(60) @Max(120) Integer age
 ) {
 }
