@@ -275,7 +275,12 @@ public class AssessmentService {
       return mlAnalysisService.analyze(userId, metrics);
     } catch (Exception ex) {
       log.error("Análisis ML falló para userId={}, fallback reglas: {}", userId, ex.getMessage(), ex);
+    }
+    try {
       return ruleBasedMlAnalysisService.analyze(userId, metrics);
+    } catch (Exception ex) {
+      log.error("Rule-based analysis falló para userId={}: {}", userId, ex.getMessage(), ex);
+      return new MlPrediction("fallback-v1", 0.5d, false, AlertLevel.NORMAL, "");
     }
   }
 
