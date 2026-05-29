@@ -3,6 +3,7 @@ package com.eternamente.common.api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.TransactionSystemException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,10 +57,10 @@ public class GlobalExceptionHandler {
     );
   }
 
-  @ExceptionHandler(TransactionSystemException.class)
-  public ResponseEntity<ApiResponse<Void>> handleTransactionSystem(TransactionSystemException ex) {
-    Throwable cause = ex.getRootCause();
-    log.error("Error de transacción: causa raíz={}: {}", cause != null ? cause.getClass().getSimpleName() : "null", ex.getMessage(), ex);
+  @ExceptionHandler(TransactionException.class)
+  public ResponseEntity<ApiResponse<Void>> handleTransactionException(TransactionException ex) {
+    log.error("Error de transacción: {} — {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
+    Throwable cause = ex instanceof TransactionSystemException tse ? tse.getRootCause() : ex.getCause();
     if (cause instanceof ResponseStatusException rse) {
       return handleStatus(rse);
     }
