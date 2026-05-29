@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS game_settings (
 
 INSERT INTO game_settings (game_type, settings) VALUES
   ('memory', '{"pairsEasy":6,"pairsMedium":8,"pairsHard":10,"colsEasy":3,"colsMedium":4,"colsHard":4}'),
-  ('stroop', '{"rounds":20,"wordDisplayMs":4000}'),
+  ('stroop', '{"rounds":20,"timeLimitSeconds":5}'),
   ('navigation', '{"maxLevel":5,"gridSize":5}'),
   ('whackamole', '{"rounds":30,"gridSize":3,"showMs":1400,"distractorChance":0.35}'),
   ('digitspan', '{"maxLevel":5,"sequenceStart":3,"displayMsPerDigit":900,"responseTimeoutMs":12000}'),

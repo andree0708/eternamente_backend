@@ -221,7 +221,8 @@ public class AssessmentService {
     return new AssessmentAnalysisResponse(session.getId(), groqCognitiveAnalysisService.modelName(), analysis);
   }
 
-  private void updateCognitiveSummary(User user, String gameType, double riskScore, Map<String, Object> metrics) {
+  @Transactional
+  public void updateCognitiveSummary(User user, String gameType, double riskScore, Map<String, Object> metrics) {
     UserCognitiveSummary summary = summaryRepository.findById(user.getId())
         .orElseGet(() -> {
           UserCognitiveSummary created = new UserCognitiveSummary();
