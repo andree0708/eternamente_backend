@@ -48,7 +48,8 @@ public class AssessmentController {
     try {
       result = assessmentService.create(request, userId);
     } catch (Exception ex) {
-      log.error("<< POST /api/assessments LANZÓ EXCEPCIÓN: {} — {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
+      log.error("<< POST /api/assessments LANZÓ EXCEPCIÓN: {} — {} — exClass={}",
+          ex.getClass().getSimpleName(), ex.getMessage(), ex.getClass().getName(), ex);
       throw ex;
     }
     log.info("<< POST /api/assessments OK userId={} riskScore={}", userId, result.riskScore());

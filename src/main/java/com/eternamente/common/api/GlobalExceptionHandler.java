@@ -3,6 +3,7 @@ package com.eternamente.common.api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -53,6 +54,17 @@ public class GlobalExceptionHandler {
         "DB_ERROR",
         "Error de base de datos. Comprueba que Flyway aplicó las migraciones V7-V9."
     );
+  }
+
+  @ExceptionHandler(TransactionSystemException.class)
+  public ResponseEntity<ApiResponse<Void>> handleTransactionSystem(TransactionSystemException ex) {
+    Throwable cause = ex.getRootCause();
+    log.error("Error de transacción: causa raíz={}: {}", cause != null ? cause.getClass().getSimpleName() : "null", ex.getMessage(), ex);
+    if (cause instanceof ResponseStatusException rse) {
+      return handleStatus(rse);
+    }
+    return ApiResponse.error(HttpStatus.INTERNAL_SERVER_ERROR, "TRANSACTION_ERROR",
+        "Error en la transacción: " + (cause != null ? cause.getMessage() : ex.getMessage()));
   }
 
   @ExceptionHandler(NoHandlerFoundException.class)
