@@ -198,11 +198,17 @@ public class AssessmentService {
     CognitiveSummaryResponse stored = getSummary(userId);
     if (stored.totalSessions() > 0 || sessions.isEmpty()) return stored;
     double avgRisk = sessions.stream().mapToDouble(AssessmentSession::getRiskScore).average().orElse(0d);
+    var avgAcc = sessions.stream()
+        .map(s -> readAccuracy(safeMetrics(s)))
+        .filter(a -> a != null)
+        .mapToDouble(Double::doubleValue)
+        .average();
+    Double accuracy = avgAcc.isPresent() ? avgAcc.getAsDouble() : null;
     long mem = sessions.stream().filter(s -> List.of("memory","digitspan","corsi").contains(s.getGameType())).count();
     long str = sessions.stream().filter(s -> List.of("stroop","arithmetic").contains(s.getGameType())).count();
     long nav = sessions.stream().filter(s -> List.of("navigation","orientation").contains(s.getGameType())).count();
     long whack = sessions.stream().filter(s -> "whackamole".equals(s.getGameType())).count();
-    return new CognitiveSummaryResponse(userId, sessions.size(), avgRisk, null, (int)mem, (int)str, (int)nav, (int)whack, null, null);
+    return new CognitiveSummaryResponse(userId, sessions.size(), avgRisk, accuracy, (int)mem, (int)str, (int)nav, (int)whack, null, null);
   }
 
   private Map<String, Object> sanitizeMetrics(Map<String, Object> raw) {
