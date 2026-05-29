@@ -65,7 +65,6 @@ public class AssessmentService {
     this.objectMapper = objectMapper;
   }
 
-  @Transactional(noRollbackFor = ResponseStatusException.class)
   public AssessmentResponse create(CreateAssessmentRequest request, UUID userId) {
     try {
       User user = userRepository.findById(userId)
