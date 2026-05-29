@@ -142,8 +142,8 @@ public class AssessmentService {
 
   @Transactional(readOnly = true)
   public AnalyticsResponse getAnalytics(UUID userId) {
-    CognitiveSummaryResponse summary = getSummary(userId);
     List<AssessmentSession> sessions = repository.findByUserId(userId);
+    CognitiveSummaryResponse summary = computeSummaryFallback(userId, sessions);
 
     Map<String, List<AssessmentSession>> grouped = sessions.stream()
         .collect(Collectors.groupingBy(
@@ -192,6 +192,17 @@ public class AssessmentService {
   private Map<String, Object> safeMetrics(AssessmentSession session) {
     Map<String, Object> m = session.getMetrics();
     return m != null ? m : Map.of();
+  }
+
+  private CognitiveSummaryResponse computeSummaryFallback(UUID userId, List<AssessmentSession> sessions) {
+    CognitiveSummaryResponse stored = getSummary(userId);
+    if (stored.totalSessions() > 0 || sessions.isEmpty()) return stored;
+    double avgRisk = sessions.stream().mapToDouble(AssessmentSession::getRiskScore).average().orElse(0d);
+    long mem = sessions.stream().filter(s -> List.of("memory","digitspan","corsi").contains(s.getGameType())).count();
+    long str = sessions.stream().filter(s -> List.of("stroop","arithmetic").contains(s.getGameType())).count();
+    long nav = sessions.stream().filter(s -> List.of("navigation","orientation").contains(s.getGameType())).count();
+    long whack = sessions.stream().filter(s -> "whackamole".equals(s.getGameType())).count();
+    return new CognitiveSummaryResponse(userId, sessions.size(), avgRisk, null, (int)mem, (int)str, (int)nav, (int)whack, null, null);
   }
 
   private Map<String, Object> sanitizeMetrics(Map<String, Object> raw) {
