@@ -67,51 +67,55 @@ public class AssessmentService {
 
   @Transactional
   public AssessmentResponse create(CreateAssessmentRequest request, UUID userId) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
-
-    Map<String, Object> metrics = sanitizeMetrics(request.metrics());
-    MlPrediction prediction = resolvePrediction(userId, metrics);
-    String gameType = resolveGameType(metrics);
-
-    AssessmentSession session = new AssessmentSession();
-    session.setUser(user);
-    session.setUserExternalId(user.getEmail() != null ? user.getEmail() : userId.toString());
-    session.setAge(request.age());
-    session.setMetrics(metrics);
-    session.setGameType(gameType);
-    session.setModelVersion(prediction.modelVersion());
-    session.setRiskScore(prediction.riskScore());
-    session.setPredictedDcl(prediction.predictedDcl());
-    AlertLevel alert = prediction.alertLevel() != null ? prediction.alertLevel() : AlertLevel.NORMAL;
-    session.setAlertLevel(alert.name());
-    session.setMlRunAt(Instant.now());
-    session.ensureLegacyColumns();
-
-    AssessmentSession saved;
     try {
-      saved = repository.save(session);
+      User user = userRepository.findById(userId)
+          .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+      Map<String, Object> metrics = sanitizeMetrics(request.metrics());
+      MlPrediction prediction = resolvePrediction(userId, metrics);
+      String gameType = resolveGameType(metrics);
+
+      AssessmentSession session = new AssessmentSession();
+      session.setUser(user);
+      session.setUserExternalId(user.getEmail() != null ? user.getEmail() : userId.toString());
+      session.setAge(request.age());
+      session.setMetrics(metrics);
+      session.setGameType(gameType);
+      session.setModelVersion(prediction.modelVersion());
+      session.setRiskScore(prediction.riskScore());
+      session.setPredictedDcl(prediction.predictedDcl());
+      AlertLevel alert = prediction.alertLevel() != null ? prediction.alertLevel() : AlertLevel.NORMAL;
+      session.setAlertLevel(alert.name());
+      session.setMlRunAt(Instant.now());
+      session.ensureLegacyColumns();
+
+      log.info("Guardando assessment userId={}, gameType={}, riskScore={}, modelVersion={}",
+          userId, gameType, prediction.riskScore(), prediction.modelVersion());
+
+      AssessmentSession saved = repository.save(session);
+
+      try {
+        updateCognitiveSummary(user, gameType, prediction.riskScore(), request.metrics());
+      } catch (Exception ex) {
+        log.warn("Partida guardada pero falló actualización de resumen cognitivo: {}", ex.getMessage());
+      }
+
+      return AssessmentResponse.from(saved, userId, objectMapper);
+    } catch (ResponseStatusException ex) {
+      throw ex;
     } catch (DataIntegrityViolationException ex) {
-      log.error("No se pudo guardar assessment_session para userId={}: {}", userId, ex.getMessage(), ex);
+      log.error("DB constraint violation para userId={}: {}", userId, ex.getMostSpecificCause().getMessage(), ex);
       throw new ResponseStatusException(
           HttpStatus.CONFLICT,
-          "No se pudo guardar la partida. Revisa migraciones Flyway en Render (V7-V9)."
+          "Error de integridad en BD: " + ex.getMostSpecificCause().getMessage()
       );
     } catch (Exception ex) {
-      log.error("Error al persistir assessment_session userId={}: {}", userId, ex.getMessage(), ex);
+      log.error("Error CRÍTICO en create() para userId={}: {}", userId, ex.getMessage(), ex);
       throw new ResponseStatusException(
           HttpStatus.INTERNAL_SERVER_ERROR,
-          "Error al guardar la partida en el servidor."
+          "Error interno al guardar la partida: " + ex.getMessage()
       );
     }
-
-    try {
-      updateCognitiveSummary(user, gameType, prediction.riskScore(), request.metrics());
-    } catch (Exception ex) {
-      log.warn("Partida guardada pero falló actualización de resumen cognitivo: {}", ex.getMessage());
-    }
-
-    return AssessmentResponse.from(saved, userId, objectMapper);
   }
 
   @Transactional(readOnly = true)
