@@ -32,6 +32,9 @@ public class User {
   @Column(name = "full_name", length = 255)
   private String fullName;
 
+  @Column(name = "age")
+  private Integer age;
+
   @Column(name = "created_at", nullable = false, updatable = false)
   private Instant createdAt;
 
@@ -82,6 +85,14 @@ public class User {
 
   public void setFullName(String fullName) {
     this.fullName = fullName;
+  }
+
+  public Integer getAge() {
+    return age;
+  }
+
+  public void setAge(Integer age) {
+    this.age = age;
   }
 
   public Instant getCreatedAt() {
