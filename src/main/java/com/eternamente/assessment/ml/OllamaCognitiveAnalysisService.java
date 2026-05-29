@@ -128,7 +128,7 @@ public class OllamaCognitiveAnalysisService {
             session.getRiskScore() == null ? 0d : session.getRiskScore(),
             String.valueOf(session.getPredictedDcl()),
             session.getModelVersion() == null ? "unknown" : session.getModelVersion(),
-            session.getMetricsJson() == null ? "{}" : session.getMetricsJson(),
+            session.getMetrics() == null ? "{}" : String.valueOf(session.getMetrics()),
             historyBlock
         );
   }

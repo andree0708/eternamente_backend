@@ -15,6 +15,10 @@ public class SessionMetricsReader {
     this.objectMapper = objectMapper;
   }
 
+  public Map<String, Object> parse(Map<String, Object> metrics) {
+    return metrics != null ? metrics : Map.of();
+  }
+
   public Map<String, Object> parse(String metricsJson) {
     if (metricsJson == null || metricsJson.isBlank()) {
       return Map.of();

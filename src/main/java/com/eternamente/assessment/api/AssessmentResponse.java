@@ -1,7 +1,6 @@
 package com.eternamente.assessment.api;
 
 import com.eternamente.assessment.AssessmentSession;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
@@ -27,7 +26,7 @@ public record AssessmentResponse(
       UUID userId,
       ObjectMapper objectMapper
   ) {
-    Map<String, Object> metrics = parseMetrics(session.getMetricsJson(), objectMapper);
+    Map<String, Object> metrics = session.getMetrics() != null ? session.getMetrics() : Collections.emptyMap();
     String gameType = session.getGameType();
     if (gameType == null || gameType.isBlank()) {
       Object fromMetrics = metrics.get("gameType");
@@ -48,14 +47,4 @@ public record AssessmentResponse(
     );
   }
 
-  private static Map<String, Object> parseMetrics(String metricsJson, ObjectMapper objectMapper) {
-    if (metricsJson == null || metricsJson.isBlank()) {
-      return Collections.emptyMap();
-    }
-    try {
-      return objectMapper.readValue(metricsJson, new TypeReference<>() {});
-    } catch (Exception ignored) {
-      return Collections.emptyMap();
-    }
-  }
 }

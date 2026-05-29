@@ -16,7 +16,6 @@ import com.eternamente.assessment.ml.MlPrediction;
 import com.eternamente.assessment.ml.RuleBasedMlAnalysisService;
 import com.eternamente.user.User;
 import com.eternamente.user.UserRepository;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,15 +70,15 @@ public class AssessmentService {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
 
-    MlPrediction prediction = resolvePrediction(userId, request.metrics());
-    String metricsJson = toMetricsJson(request.metrics());
-    String gameType = resolveGameType(request.metrics());
+    Map<String, Object> metrics = sanitizeMetrics(request.metrics());
+    MlPrediction prediction = resolvePrediction(userId, metrics);
+    String gameType = resolveGameType(metrics);
 
     AssessmentSession session = new AssessmentSession();
     session.setUser(user);
-    session.setUserExternalId(user.getEmail());
+    session.setUserExternalId(user.getEmail() != null ? user.getEmail() : userId.toString());
     session.setAge(request.age());
-    session.setMetricsJson(metricsJson);
+    session.setMetrics(metrics);
     session.setGameType(gameType);
     session.setModelVersion(prediction.modelVersion());
     session.setRiskScore(prediction.riskScore());
@@ -157,7 +156,7 @@ public class AssessmentService {
               .average()
               .orElse(0d);
           var accuracyAvg = list.stream()
-              .map(s -> readAccuracy(parseMetrics(s.getMetricsJson())))
+              .map(s -> readAccuracy(safeMetrics(s)))
               .filter(a -> a != null)
               .mapToDouble(Double::doubleValue)
               .average();
@@ -186,13 +185,27 @@ public class AssessmentService {
     return new AnalyticsResponse(summary, byGameType, riskTrend);
   }
 
-  @SuppressWarnings("unchecked")
-  private Map<String, Object> parseMetrics(String metricsJson) {
-    try {
-      return objectMapper.readValue(metricsJson, Map.class);
-    } catch (JsonProcessingException e) {
-      return Map.of();
+  private Map<String, Object> safeMetrics(AssessmentSession session) {
+    Map<String, Object> m = session.getMetrics();
+    return m != null ? m : Map.of();
+  }
+
+  private Map<String, Object> sanitizeMetrics(Map<String, Object> raw) {
+    Map<String, Object> out = new LinkedHashMap<>();
+    if (raw == null) {
+      return out;
     }
+    for (Map.Entry<String, Object> e : raw.entrySet()) {
+      Object v = e.getValue();
+      if (v instanceof Double d && (d.isNaN() || d.isInfinite())) {
+        continue;
+      }
+      if (v instanceof Float f && (f.isNaN() || f.isInfinite())) {
+        continue;
+      }
+      out.put(e.getKey(), v);
+    }
+    return out;
   }
 
   @Transactional(readOnly = true)
@@ -273,11 +286,4 @@ public class AssessmentService {
     return "memory";
   }
 
-  private String toMetricsJson(Map<String, Object> metrics) {
-    try {
-      return objectMapper.writeValueAsString(metrics);
-    } catch (JsonProcessingException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "metrics inválidos: no se pueden serializar");
-    }
-  }
 }

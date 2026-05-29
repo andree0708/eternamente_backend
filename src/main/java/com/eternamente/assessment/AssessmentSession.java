@@ -13,6 +13,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -36,7 +38,7 @@ public class AssessmentSession {
 
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "metrics", nullable = false, columnDefinition = "jsonb")
-  private String metricsJson;
+  private Map<String, Object> metrics = new HashMap<>();
 
   @Column(name = "game_type", length = 32)
   private String gameType;
@@ -109,12 +111,12 @@ public class AssessmentSession {
     this.age = age;
   }
 
-  public String getMetricsJson() {
-    return metricsJson;
+  public Map<String, Object> getMetrics() {
+    return metrics;
   }
 
-  public void setMetricsJson(String metricsJson) {
-    this.metricsJson = metricsJson;
+  public void setMetrics(Map<String, Object> metrics) {
+    this.metrics = metrics != null ? metrics : new HashMap<>();
   }
 
   public String getGameType() {

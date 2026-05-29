@@ -107,7 +107,7 @@ public class CognitiveMlAnalysisService implements MlAnalysisService {
       points.add(new FeatureExtractor.SessionPoint(
           s.getCreatedAt(),
           type,
-          metricsReader.parse(s.getMetricsJson())
+          metricsReader.parse(s.getMetrics())
       ));
     }
     return points;
